@@ -29,18 +29,19 @@ The benchmark used for comparison requires an environment created with Keras/Ten
 
 Ensure that you create the environment according to requirements.txt
 
+Note that tensorflow is not listed in the requirements. For CPU install the correct version with conda:
+`conda install tensorflow==1.1.10`
+
 To run with GPU you will likely need to uninstall tensorflow and then re-install
 `pip uninstall tensorflow`
 
 This will also uninstall keras. Reinstall with:
-`conda uninstall tensorflow-gpu'
+`conda install tensorflow-gpu==1.15`
 
 Also re-install keras:
 `conda install keras`
 
 To change back to CPU you can uninstall tensorflow using conda and then re-install:
-'conda uninstall tensorflow-gpu`
-`conda install tensorflow`
-`conda install keras`
+`conda install tensorflow==1.15`
 
  
