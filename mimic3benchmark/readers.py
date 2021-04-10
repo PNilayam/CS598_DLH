@@ -163,19 +163,28 @@ class LengthOfStayReader(Reader):
         Reader.__init__(self, dataset_dir, listfile)
         self._data = [line.split(',') for line in self._data]
         self._data = [(x, float(t), float(y)) for (x, t, y) in self._data]
+        self.listfile = listfile
+        self.timeseries_cache = {}
 
     def _read_timeseries(self, ts_filename, time_bound):
         ret = []
-        with open(os.path.join(self._dataset_dir, ts_filename), "r") as tsfile:
-            header = tsfile.readline().strip().split(',')
-            assert header[0] == "Hours"
-            for line in tsfile:
-                mas = line.strip().split(',')
-                t = float(mas[0])
-                if t > time_bound + 1e-6:
-                    break
-                ret.append(np.array(mas))
-        return (np.stack(ret), header)
+        if ts_filename not in self.timeseries_cache:
+            with open(os.path.join(self._dataset_dir, ts_filename), "r") as tsfile:
+                header = tsfile.readline().strip().split(',')
+                assert header[0] == "Hours"
+                for line in tsfile:
+                    mas = line.strip().split(',')
+                    t = float(mas[0])
+                    # if t > time_bound + 1e-6:
+                    #     break
+                    ret.append(np.array(mas))
+
+            self.timeseries_cache[ts_filename] = (ret, header)
+        else:
+            ret, header = self.timeseries_cache[ts_filename]
+
+        #TODO aflanders: This is no longer correct as there can be more than one entry in the same hour
+        return (np.stack(ret[:int(time_bound)]), header)
 
     def read_example(self, index):
         """ Reads the example with given index.

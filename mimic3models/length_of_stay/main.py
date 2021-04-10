@@ -28,6 +28,15 @@ parser.add_argument('--data', type=str, help='Path to the data of length-of-stay
                     default=os.path.join(os.path.dirname(__file__), '../../data/length-of-stay/'))
 parser.add_argument('--output_dir', type=str, help='Directory relative which all output files are stored',
                     default='.')
+
+# aflanders: Add additional arguments to tune training
+parser.add_argument('--train_batches', type=int, default=500,
+    help='number of batches to train on per epoch')
+parser.add_argument('--val_batches', type=int, default=200,
+    help='number of batches to validate on per epoch')
+parser.add_argument('--workers', type=int, default=1,
+    help='number of workers to load data')
+
 args = parser.parse_args()
 print(args)
 
@@ -88,9 +97,13 @@ print("==> model.final_name:", model.final_name)
 
 # Compile the model
 print("==> compiling the model")
-optimizer_config = {'class_name': args.optimizer,
-                    'config': {'lr': args.lr,
-                               'beta_1': args.beta_1}}
+# TODO: aflanders: Determine how to pass the learning rate and beta arguments into the optimizer.
+# There was a change in tensorflow 2.0
+# optimizer_config = {'class_name': args.optimizer,
+#                     'config': {'learning_rate': args.lr,
+#                                'beta_1': args.beta_1}}
+optimizer_config = args.optimizer
+print(optimizer_config)
 
 if args.partition == 'none':
     # other options are: 'mean_squared_error', 'mean_absolute_percentage_error'
@@ -120,8 +133,13 @@ if args.deep_supervision:
                                                  discretizer, normalizer, args.batch_size, shuffle=False)
 else:
     # Set number of batches in one epoch
-    train_nbatches = 2000
-    val_nbatches = 1000
+    # aflanders: Make the step count a parameter. The steps have been changed to be
+    # one batch size each
+    # train_nbatches = 2000
+    # val_nbatches = 1000
+    train_nbatches = args.train_batches
+    val_nbatches = args.val_batches
+
     if args.small_part:
         train_nbatches = 20
         val_nbatches = 20
@@ -132,14 +150,16 @@ else:
                                     partition=args.partition,
                                     batch_size=args.batch_size,
                                     steps=train_nbatches,
-                                    shuffle=True)
+                                    shuffle=True,
+                                    verbose=args.verbose)
     val_data_gen = utils.BatchGen(reader=val_reader,
                                   discretizer=discretizer,
                                   normalizer=normalizer,
                                   partition=args.partition,
                                   batch_size=args.batch_size,
                                   steps=val_nbatches,
-                                  shuffle=False)
+                                  shuffle=False,
+                                  verbose=args.verbose)
 if args.mode == 'train':
     # Prepare training
     path = os.path.join(args.output_dir, 'keras_states/' + model.final_name + '.chunk{epoch}.test{val_loss}.state')
@@ -153,8 +173,11 @@ if args.mode == 'train':
     dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    saver = ModelCheckpoint(path, verbose=1, period=args.save_every)
-
+    #aflanders: Tensorflow 2.0 compatibility
+    #saver = ModelCheckpoint(path, verbose=1, period=args.save_every)
+    saver = ModelCheckpoint(path, verbose=1, save_freq=args.save_every)
+    #aflanders: remove warning
+    
     keras_logs = os.path.join(args.output_dir, 'keras_logs')
     if not os.path.exists(keras_logs):
         os.makedirs(keras_logs)
@@ -162,14 +185,32 @@ if args.mode == 'train':
                            append=True, separator=';')
 
     print("==> training")
-    model.fit_generator(generator=train_data_gen,
-                        steps_per_epoch=train_data_gen.steps,
-                        validation_data=val_data_gen,
-                        validation_steps=val_data_gen.steps,
-                        epochs=n_trained_chunks + args.epochs,
-                        initial_epoch=n_trained_chunks,
-                        callbacks=[metrics_callback, saver, csv_logger],
-                        verbose=args.verbose)
+    #aflanders: Change to use multi-processing and support tensorflow 2.0
+    # model.fit_generator(generator=train_data_gen,
+    #                     steps_per_epoch=train_data_gen.steps,
+    #                     validation_data=val_data_gen,
+    #                     validation_steps=val_data_gen.steps,
+    #                     epochs=n_trained_chunks + args.epochs,
+    #                     initial_epoch=n_trained_chunks,
+    #                     callbacks=[metrics_callback, saver, csv_logger],
+    #                     verbose=args.verbose)
+    # import cProfile
+    # cProfile.run('history = model.fit(x=train_data_gen, steps_per_epoch=train_data_gen.steps, epochs=n_trained_chunks + args.epochs, initial_epoch=n_trained_chunks, callbacks=[metrics_callback, saver, csv_logger], verbose=args.verbose, workers=1, use_multiprocessing=False)')
+
+    history = model.fit(x=train_data_gen,
+            steps_per_epoch=train_data_gen.steps,
+            #validation_data=val_data_gen,
+            #validation_steps=val_data_gen.steps,
+            epochs=n_trained_chunks + args.epochs,
+            initial_epoch=n_trained_chunks,
+            callbacks=[metrics_callback, saver, csv_logger],
+            verbose=args.verbose,
+            workers=args.workers,
+            use_multiprocessing=True)
+    print("==> /training")
+
+    discretizer.print_statistics()
+    #aflanders: end
 
 elif args.mode == 'test':
     # ensure that the code uses test_reader

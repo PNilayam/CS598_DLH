@@ -104,8 +104,9 @@ class InHospitalMortalityMetrics(keras.callbacks.Callback):
         history.append(ret)
 
     def on_epoch_end(self, epoch, logs={}):
-        print("\n==>predicting on train")
-        self.calc_metrics(self.train_data, self.train_history, 'train', logs)
+        #aflanders: not required
+        #print("\n==>predicting on train")
+        #self.calc_metrics(self.train_data, self.train_history, 'train', logs)
         print("\n==>predicting on validation")
         self.calc_metrics(self.val_data, self.val_history, 'val', logs)
 
@@ -164,7 +165,7 @@ class PhenotypingMetrics(keras.callbacks.Callback):
 
 class LengthOfStayMetrics(keras.callbacks.Callback):
     def __init__(self, train_data_gen, val_data_gen, partition, batch_size=32,
-                 early_stopping=True, verbose=2):
+                 early_stopping=True, verbose=2, workers=1):
         super(LengthOfStayMetrics, self).__init__()
         self.train_data_gen = train_data_gen
         self.val_data_gen = val_data_gen
@@ -174,31 +175,46 @@ class LengthOfStayMetrics(keras.callbacks.Callback):
         self.verbose = verbose
         self.train_history = []
         self.val_history = []
-
+        self.workers = workers
+    
     def calc_metrics(self, data_gen, history, dataset, logs):
         y_true = []
         predictions = []
-        for i in range(data_gen.steps):
-            if self.verbose == 1:
-                print("\tdone {}/{}".format(i, data_gen.steps), end='\r')
-            (x, y_processed, y) = data_gen.next(return_y_true=True)
-            pred = self.model.predict(x, batch_size=self.batch_size)
-            if isinstance(x, list) and len(x) == 2:  # deep supervision
-                if pred.shape[-1] == 1:  # regression
-                    pred_flatten = pred.flatten()
-                else:  # classification
-                    pred_flatten = pred.reshape((-1, 10))
-                for m, t, p in zip(x[1].flatten(), y.flatten(), pred_flatten):
-                    if np.equal(m, 1):
-                        y_true.append(t)
-                        predictions.append(p)
-            else:
-                if pred.shape[-1] == 1:
-                    y_true += list(y.flatten())
-                    predictions += list(pred.flatten())
-                else:
-                    y_true += list(y)
-                    predictions += list(pred)
+        # for i in range(data_gen.steps):
+        #     if self.verbose == 1:
+        #         print("\tdone {}/{}".format(i, data_gen.steps), end='\r')
+        #     (x, y_processed, y) = data_gen.getitem(i, return_y_true=True)
+        #     pred = self.model.predict(x, batch_size=self.batch_size, verbose=self.verbose)
+        pred = self.model.predict(data_gen, 
+                                batch_size=self.batch_size, 
+                                verbose=self.verbose, 
+                                steps=data_gen.steps,
+                                workers=self.workers,
+                                use_multiprocessing=True)
+
+        #TODO aflanders: Unsure exactly what "deep supervision does" but re-write will
+        # be required to make it work
+
+        # if isinstance(x, list) and len(x) == 2:  # deep supervision
+        #     if pred.shape[-1] == 1:  # regression
+        #         pred_flatten = pred.flatten()
+        #     else:  # classification
+        #         pred_flatten = pred.reshape((-1, 10))
+        #     for m, t, p in zip(x[1].flatten(), y.flatten(), pred_flatten):
+        #         if np.equal(m, 1):
+        #             y_true.append(t)
+        #             predictions.append(p)
+        # else:
+        # if pred.shape[-1] == 1:
+        #     y_true += list(y.flatten())
+        #     predictions += list(pred.flatten())
+        # else:
+
+        y = data_gen.get_y(len(pred))
+
+        y_true += list(y)
+        predictions += list(pred)
+
         print('\n')
         if self.partition == 'log':
             predictions = [metrics.get_estimate_log(x, 10) for x in predictions]
@@ -213,16 +229,18 @@ class LengthOfStayMetrics(keras.callbacks.Callback):
         history.append(ret)
 
     def on_epoch_end(self, epoch, logs={}):
-        print("\n==>predicting on train")
-        self.calc_metrics(self.train_data_gen, self.train_history, 'train', logs)
+        # aflanders: No need to calc metrics on training data
+        # print("\n==>predicting on train")
+        # self.calc_metrics(self.train_data_gen, self.train_history, 'train', logs)
         print("\n==>predicting on validation")
         self.calc_metrics(self.val_data_gen, self.val_history, 'val', logs)
 
         if self.early_stopping:
             max_kappa = np.max([x["kappa"] for x in self.val_history])
             cur_kappa = self.val_history[-1]["kappa"]
-            max_train_kappa = np.max([x["kappa"] for x in self.train_history])
-            if max_kappa > 0.38 and cur_kappa < 0.35 and max_train_kappa > 0.47:
+            #max_train_kappa = np.max([x["kappa"] for x in self.train_history])
+            #if max_kappa > 0.38 and cur_kappa < 0.35 and max_train_kappa > 0.47:
+            if max_kappa > 0.38 and cur_kappa < 0.35:
                 self.model.stop_training = True
 
 

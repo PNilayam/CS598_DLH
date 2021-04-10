@@ -6,6 +6,7 @@ import platform
 import pickle
 import json
 import os
+#import cProfile, pstats, io
 
 
 class Discretizer:
@@ -30,8 +31,14 @@ class Discretizer:
         self._done_count = 0
         self._empty_bins_sum = 0
         self._unused_data_sum = 0
+        #self.pr = cProfile.Profile()
+
 
     def transform(self, X, header=None, end=None):
+        #TODO aflanders: Need to optimize this method which is a bottleneck to 
+        # training. Up to 13sec for batches of 512
+        #self.pr.enable()
+
         if header is None:
             header = self._header
         assert header[0] == "Hours"
@@ -168,13 +175,23 @@ class Discretizer:
 
         new_header = ",".join(new_header)
 
+        # Profile
+        #self.pr.disable()
+
         return (data, new_header)
+
 
     def print_statistics(self):
         print("statistics of discretizer:")
         print("\tconverted {} examples".format(self._done_count))
         print("\taverage unused data = {:.2f} percent".format(100.0 * self._unused_data_sum / self._done_count))
         print("\taverage empty  bins = {:.2f} percent".format(100.0 * self._empty_bins_sum / self._done_count))
+
+        # s = io.StringIO()
+        # sortby = 'cumulative'
+        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
 
 
 class Normalizer:

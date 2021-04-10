@@ -7,6 +7,8 @@ import threading
 import os
 import numpy as np
 import random
+#aflanders: Support for multi-processing; BatchGen was re-built; One batch is processed at a time
+from keras.utils import Sequence
 
 
 def preprocess_chunk(data, ts, discretizer, normalizer=None):
@@ -16,10 +18,11 @@ def preprocess_chunk(data, ts, discretizer, normalizer=None):
     return data
 
 
-class BatchGen(object):
+class BatchGen(Sequence):
 
     def __init__(self, reader, partition, discretizer, normalizer,
-                 batch_size, steps, shuffle, return_names=False):
+                 batch_size, steps, shuffle, return_names=False,
+                 verbose=0):
         self.reader = reader
         self.partition = partition
         self.discretizer = discretizer
@@ -27,6 +30,8 @@ class BatchGen(object):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.return_names = return_names
+        self.verbose = verbose
+        self.on_epoch_end()
 
         if steps is None:
             self.n_examples = reader.get_number_of_examples()
@@ -35,69 +40,71 @@ class BatchGen(object):
             self.n_examples = steps * batch_size
             self.steps = steps
 
-        self.chunk_size = min(1024, self.steps) * batch_size
-        self.lock = threading.Lock()
-        self.generator = self._generator()
+    def __len__(self):
+        return self.steps
 
-    def _generator(self):
+    #aflanders: Note - the index passed in is the step index which is used to locate the dataindex and read the next B entries
+    def getitem(self, index, return_y_true=False):
+        if self.verbose == 1:
+            print(f"Start: {index} from reader:{self.reader.listfile}")
+
         B = self.batch_size
-        while True:
-            if self.shuffle:
-                self.reader.random_shuffle()
-            remaining = self.n_examples
-            while remaining > 0:
-                current_size = min(self.chunk_size, remaining)
-                remaining -= current_size
+        ret = common_utils.read_chunk_index(self.reader, index*B, B)
+        Xs = ret["X"]
+        ts = ret["t"]
+        ys = ret["y"]
+        names = ret["name"]
 
-                ret = common_utils.read_chunk(self.reader, current_size)
-                Xs = ret["X"]
-                ts = ret["t"]
-                ys = ret["y"]
-                names = ret["name"]
+        Xs = preprocess_chunk(Xs, ts, self.discretizer, self.normalizer)
+        #(Xs, ys, ts, names) = common_utils.sort_and_shuffle([Xs, ys, ts, names], B)
 
-                Xs = preprocess_chunk(Xs, ts, self.discretizer, self.normalizer)
-                (Xs, ys, ts, names) = common_utils.sort_and_shuffle([Xs, ys, ts, names], B)
+        i=0
+        X = common_utils.pad_zeros(Xs[i:i + B])
+        y = ys[i:i+B]
+        y_true = np.array(y)
+        batch_names = names[i:i+B]
+        batch_ts = ts[i:i+B]
 
-                for i in range(0, current_size, B):
-                    X = common_utils.pad_zeros(Xs[i:i + B])
-                    y = ys[i:i+B]
-                    y_true = np.array(y)
-                    batch_names = names[i:i+B]
-                    batch_ts = ts[i:i+B]
+        if self.partition == 'log':
+            y = [metrics.get_bin_log(x, 10) for x in y]
+        if self.partition == 'custom':
+            y = [metrics.get_bin_custom(x, 10) for x in y]
 
-                    if self.partition == 'log':
-                        y = [metrics.get_bin_log(x, 10) for x in y]
-                    if self.partition == 'custom':
-                        y = [metrics.get_bin_custom(x, 10) for x in y]
+        y = np.array(y)
 
-                    y = np.array(y)
+        if return_y_true:
+            batch_data = (X, y, y_true)
+        else:
+            batch_data = (X, y)
 
-                    if self.return_y_true:
-                        batch_data = (X, y, y_true)
-                    else:
-                        batch_data = (X, y)
+        if self.verbose == 1:
+            print(f"End: {index} from reader:{self.reader.listfile}")
 
-                    if not self.return_names:
-                        yield batch_data
-                    else:
-                        yield {"data": batch_data, "names": batch_names, "ts": batch_ts}
+        if not self.return_names:
+            return batch_data
+        else:
+            return {"data": batch_data, "names": batch_names, "ts": batch_ts}
 
-    def __iter__(self):
-        return self.generator
+    def __getitem__(self, index):
+        ret = self.getitem(index)
+        return ret
 
-    def next(self, return_y_true=False):
-        with self.lock:
-            self.return_y_true = return_y_true
-            return next(self.generator)
+    def on_epoch_end(self):
+        if self.shuffle:
+            self.reader.random_shuffle()
 
-    def __next__(self):
-        return self.next()
+    def get_y(self, records=None):
+        if records != None:
+            return [x[2] for x in self.reader._data[:records]]
+        else:
+            return [x[2] for x in self.reader._data]
 
 
 class BatchGenDeepSupervision(object):
 
     def __init__(self, dataloader, partition, discretizer, normalizer,
                  batch_size, shuffle, return_names=False):
+        raise NotImplementedError()
         self.partition = partition
         self.batch_size = batch_size
         self.shuffle = shuffle

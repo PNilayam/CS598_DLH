@@ -40,6 +40,20 @@ def read_chunk(reader, chunk_size):
     return data
 
 
+#aflanders: Add to support Sequence reader
+def read_chunk_index(reader, index, chunk_size):
+    data = {}
+    for i in range(index, index+chunk_size):
+        ret = reader.read_example(i)
+        for k, v in ret.items():
+            if k not in data:
+                data[k] = []
+            data[k].append(v)
+    data["header"] = data["header"][0]
+    return data
+#aflanders: Add to support Sequence reader
+
+
 def sort_and_shuffle(data, batch_size):
     """ Sort data by the length and then make batches and shuffle them.
         data is tuple (X1, X2, ..., Xn) all of them have the same length.
