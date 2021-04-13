@@ -174,7 +174,7 @@ class LengthOfStayReader(Reader):
                 assert header[0] == "Hours"
                 for line in tsfile:
                     mas = line.strip().split(',')
-                    t = float(mas[0])
+                    #t = float(mas[0])
                     # if t > time_bound + 1e-6:
                     #     break
                     ret.append(np.array(mas))
@@ -183,8 +183,8 @@ class LengthOfStayReader(Reader):
         else:
             ret, header = self.timeseries_cache[ts_filename]
 
-        #TODO aflanders: This is no longer correct as there can be more than one entry in the same hour
-        return (np.stack(ret[:int(time_bound)]), header)
+        ret = [x for x in ret if float(x[0]) < time_bound + 1e-6]
+        return (np.stack(ret), header)
 
     def read_example(self, index):
         """ Reads the example with given index.

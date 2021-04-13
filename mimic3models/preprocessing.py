@@ -6,7 +6,8 @@ import platform
 import pickle
 import json
 import os
-#import cProfile, pstats, io
+# import cProfile, pstats, io
+# import time
 
 
 class Discretizer:
@@ -31,13 +32,19 @@ class Discretizer:
         self._done_count = 0
         self._empty_bins_sum = 0
         self._unused_data_sum = 0
-        #self.pr = cProfile.Profile()
+
+        # time
+        # self.pr = cProfile.Profile()
+        # self.tm_write_categorical = 0
+        # self.tm_write_value = 0
+        # self.tm_total = 0
+        # self.enter = 0
+        # self.tm_switch_time = 0
 
 
     def transform(self, X, header=None, end=None):
         #TODO aflanders: Need to optimize this method which is a bottleneck to 
         # training. Up to 13sec for batches of 512
-        #self.pr.enable()
 
         if header is None:
             header = self._header
@@ -82,16 +89,29 @@ class Discretizer:
         unused_data = 0
 
         def write(data, bin_id, channel, value, begin_pos):
+            # self.tm_switch_time += time.process_time() - self.enter
+                        
+            # self.pr.enable()
             channel_id = self._channel_to_id[channel]
             if self._is_categorical_channel[channel]:
                 category_id = self._possible_values[channel].index(value)
                 N_values = len(self._possible_values[channel])
                 one_hot = np.zeros((N_values,))
                 one_hot[category_id] = 1
-                for pos in range(N_values):
-                    data[bin_id, begin_pos[channel_id] + pos] = one_hot[pos]
+                #start = time.process_time()
+                data[bin_id, [range(begin_pos[channel_id], begin_pos[channel_id]+N_values)]] = one_hot
+                #self.tm_write_categorical += time.process_time() - start
+                # for pos in range(N_values):
+                #     start = time.process_time()
+                #     data[bin_id, begin_pos[channel_id] + pos] = one_hot[pos]
+                #     self.tm_write_categorical += time.process_time() - start
             else:
+                #start = time.process_time()
                 data[bin_id, begin_pos[channel_id]] = float(value)
+                # self.tm_write_value += time.process_time() - start
+
+            # self.tm_total += time.process_time() - self.enter
+            # self.pr.disable()
 
         for row in X:
             t = float(row[0]) - first_time
@@ -111,6 +131,7 @@ class Discretizer:
                     unused_data += 1
                 mask[bin_id][channel_id] = 1
 
+                # self.enter = time.process_time()
                 write(data, bin_id, channel, row[j], begin_pos)
                 original_value[bin_id][channel_id] = row[j]
 
@@ -134,6 +155,7 @@ class Discretizer:
                             imputed_value = self._normal_values[channel]
                         else:
                             imputed_value = prev_values[channel_id][-1]
+                    # self.enter = time.process_time()
                     write(data, bin_id, channel, imputed_value, begin_pos)
 
         if self._impute_strategy == 'next':
@@ -148,11 +170,14 @@ class Discretizer:
                         imputed_value = self._normal_values[channel]
                     else:
                         imputed_value = prev_values[channel_id][-1]
+                    # self.enter = time.process_time()
                     write(data, bin_id, channel, imputed_value, begin_pos)
 
-        empty_bins = np.sum([1 - min(1, np.sum(mask[i, :])) for i in range(N_bins)])
+        #aflanders: Remove expensive operation
+        #empty_bins = np.sum([1 - min(1, np.sum(mask[i, :])) for i in range(N_bins)])
+        empty_bins = 0
         self._done_count += 1
-        self._empty_bins_sum += empty_bins / (N_bins + eps)
+        #self._empty_bins_sum += empty_bins / (N_bins + eps)
         self._unused_data_sum += unused_data / (total_data + eps)
 
         if self._store_masks:
@@ -175,9 +200,6 @@ class Discretizer:
 
         new_header = ",".join(new_header)
 
-        # Profile
-        #self.pr.disable()
-
         return (data, new_header)
 
 
@@ -185,13 +207,15 @@ class Discretizer:
         print("statistics of discretizer:")
         print("\tconverted {} examples".format(self._done_count))
         print("\taverage unused data = {:.2f} percent".format(100.0 * self._unused_data_sum / self._done_count))
-        print("\taverage empty  bins = {:.2f} percent".format(100.0 * self._empty_bins_sum / self._done_count))
+        #print("\taverage empty  bins = {:.2f} percent".format(100.0 * self._empty_bins_sum / self._done_count))
 
         # s = io.StringIO()
         # sortby = 'cumulative'
         # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
         # ps.print_stats()
         # print(s.getvalue())
+
+        # print(f"Total write time:{self.tm_total}  Categorical write:{self.tm_write_categorical}  Value write:{self.tm_write_value}  Switch time:{self.tm_switch_time}")
 
 
 class Normalizer:

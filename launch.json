@@ -31,7 +31,8 @@
                 "--train_batches", "200",
                 "--val_batches", "50",
                 "--workers", "3",
-                "--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
+                //"--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
+                "--data", "/mnt/data01/rudra/mimic3-benchmarks/data/length-of-stay-org",
                 "--output_dir", "/mnt/data01/mimic-3/benchmark/length-of-stay/lstm",
                 //"&>", "lstm44.log"
             ],
