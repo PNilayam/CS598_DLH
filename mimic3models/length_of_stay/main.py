@@ -15,7 +15,7 @@ from mimic3models import metrics
 from mimic3models import keras_utils
 from mimic3models import common_utils
 
-from keras.callbacks import ModelCheckpoint, CSVLogger
+from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
 
 
 parser = argparse.ArgumentParser()
@@ -36,6 +36,8 @@ parser.add_argument('--val_batches', type=int, default=200,
     help='number of batches to validate on per epoch')
 parser.add_argument('--workers', type=int, default=1,
     help='number of workers to load data')
+parser.add_argument('--stop_early_loss', type=float, default=0.001,
+    help='Minimum loss gain')
 
 args = parser.parse_args()
 print(args)
@@ -102,8 +104,8 @@ print("==> compiling the model")
 # optimizer_config = {'class_name': args.optimizer,
 #                     'config': {'learning_rate': args.lr,
 #                                'beta_1': args.beta_1}}
+
 optimizer_config = args.optimizer
-print(optimizer_config)
 
 if args.partition == 'none':
     # other options are: 'mean_squared_error', 'mean_absolute_percentage_error'
@@ -115,7 +117,7 @@ else:
 # NOTE: it is ok to use keras.losses even for (B, T, D) shapes
 
 model.compile(optimizer=optimizer_config,
-              loss=loss_function)
+            loss=loss_function)
 model.summary()
 
 
@@ -162,20 +164,22 @@ else:
                                   verbose=args.verbose)
 if args.mode == 'train':
     # Prepare training
-    path = os.path.join(args.output_dir, 'keras_states/' + model.final_name + '.chunk{epoch}.test{val_loss}.state')
+    #aflanders: Make compatible with Tensorflow 2.0
+    path = os.path.join(args.output_dir, 'keras_states/' + model.final_name + '.chunk{epoch:02d}.test{loss:.4f}.state')
 
     metrics_callback = keras_utils.LengthOfStayMetrics(train_data_gen=train_data_gen,
                                                        val_data_gen=val_data_gen,
                                                        partition=args.partition,
                                                        batch_size=args.batch_size,
-                                                       verbose=args.verbose)
+                                                       verbose=args.verbose,
+                                                       workers=args.workers)
     # make sure save directory exists
     dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     #aflanders: Tensorflow 2.0 compatibility
-    #saver = ModelCheckpoint(path, verbose=1, period=args.save_every)
-    saver = ModelCheckpoint(path, verbose=1, save_freq=args.save_every)
+    saver = ModelCheckpoint(path, verbose=1, save_freq=args.save_every, save_weights_only=True)
+    earlyStopping = EarlyStopping(monitor='loss', min_delta=args.stop_early_loss, verbose=args.verbose)
     #aflanders: remove warning
     
     keras_logs = os.path.join(args.output_dir, 'keras_logs')
@@ -203,7 +207,7 @@ if args.mode == 'train':
             #validation_steps=val_data_gen.steps,
             epochs=n_trained_chunks + args.epochs,
             initial_epoch=n_trained_chunks,
-            callbacks=[metrics_callback, saver, csv_logger],
+            callbacks=[metrics_callback, saver, csv_logger, earlyStopping],
             verbose=args.verbose,
             workers=args.workers,
             use_multiprocessing=True)

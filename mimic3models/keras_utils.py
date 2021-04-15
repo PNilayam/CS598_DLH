@@ -235,13 +235,13 @@ class LengthOfStayMetrics(keras.callbacks.Callback):
         print("\n==>predicting on validation")
         self.calc_metrics(self.val_data_gen, self.val_history, 'val', logs)
 
-        if self.early_stopping:
-            max_kappa = np.max([x["kappa"] for x in self.val_history])
-            cur_kappa = self.val_history[-1]["kappa"]
-            #max_train_kappa = np.max([x["kappa"] for x in self.train_history])
-            #if max_kappa > 0.38 and cur_kappa < 0.35 and max_train_kappa > 0.47:
-            if max_kappa > 0.38 and cur_kappa < 0.35:
-                self.model.stop_training = True
+        # aflanders: Should not stop based on kappa score. Implemented early stopping callback on loss
+            # max_kappa = np.max([x["kappa"] for x in self.val_history])
+            # cur_kappa = self.val_history[-1]["kappa"]
+            # #max_train_kappa = np.max([x["kappa"] for x in self.train_history])
+            # #if max_kappa > 0.38 and cur_kappa < 0.35 and max_train_kappa > 0.47:
+            # if max_kappa > 0.38 and cur_kappa < 0.35:
+            #     self.model.stop_training = True
 
 
 class MultitaskMetrics(keras.callbacks.Callback):

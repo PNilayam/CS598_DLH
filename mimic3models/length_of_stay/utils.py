@@ -45,8 +45,8 @@ class BatchGen(Sequence):
 
     #aflanders: Note - the index passed in is the step index which is used to locate the dataindex and read the next B entries
     def getitem(self, index, return_y_true=False):
-        if self.verbose == 1:
-            print(f"Start: {index} from reader:{self.reader.listfile}")
+        # if self.verbose == 1:
+        #     print(f"Start: {index} from reader:{self.reader.listfile}")
 
         B = self.batch_size
         ret = common_utils.read_chunk_index(self.reader, index*B, B)
@@ -77,8 +77,8 @@ class BatchGen(Sequence):
         else:
             batch_data = (X, y)
 
-        if self.verbose == 1:
-            print(f"End: {index} from reader:{self.reader.listfile}")
+        # if self.verbose == 1:
+        #     print(f"End: {index} from reader:{self.reader.listfile}")
 
         if not self.return_names:
             return batch_data
