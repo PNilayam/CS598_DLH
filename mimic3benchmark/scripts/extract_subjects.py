@@ -31,6 +31,10 @@ except:
 patients = read_patients_table(args.mimic3_path)
 admits = read_admissions_table(args.mimic3_path)
 stays = read_icustays_table(args.mimic3_path)
+#Read and clean Notes.csv
+notes = read_notes_table(args.mimic3_path) 
+notes.to_csv(os.path.join(args.output_path, 'all_notes.csv'),
+             index=False)  # Added by Bhaskar Rudra
 if args.verbose:
     print('START:\n\tICUSTAY_IDs: {}\n\tHADM_IDs: {}\n\tSUBJECT_IDs: {}'.format(stays.ICUSTAY_ID.unique().shape[0],
           stays.HADM_ID.unique().shape[0], stays.SUBJECT_ID.unique().shape[0]))
@@ -64,7 +68,8 @@ count_icd_codes(diagnoses, output_path=os.path.join(args.output_path, 'diagnosis
 phenotypes = add_hcup_ccs_2015_groups(diagnoses, yaml.load(open(args.phenotype_definitions, 'r')))
 make_phenotype_label_matrix(phenotypes, stays).to_csv(os.path.join(args.output_path, 'phenotype_labels.csv'),
                                                       index=False, quoting=csv.QUOTE_NONNUMERIC)
-
+#Added by BR
+notes = filter_diagnoses_on_stays(notes, stays)
 if args.test:
     pat_idx = np.random.choice(patients.shape[0], size=1000)
     patients = patients.iloc[pat_idx]
@@ -75,6 +80,8 @@ if args.test:
 subjects = stays.SUBJECT_ID.unique()
 break_up_stays_by_subject(stays, args.output_path, subjects=subjects)
 break_up_diagnoses_by_subject(phenotypes, args.output_path, subjects=subjects)
+break_up_notes_by_subject(notes, args.output_path, subjects=subjects)
+
 items_to_keep = set(
     [int(itemid) for itemid in dataframe_from_csv(args.itemids_file)['ITEMID'].unique()]) if args.itemids_file else None
 for table in args.event_tables:
