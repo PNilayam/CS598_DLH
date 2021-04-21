@@ -22,6 +22,9 @@ def read_stays(subject_path):
 def read_diagnoses(subject_path):
     return dataframe_from_csv(os.path.join(subject_path, 'diagnoses.csv'), index_col=None)
 
+def read_notes(subject_path):
+    return dataframe_from_csv(os.path.join(subject_path, 'notes.csv'), index_col=None)
+
 
 def read_events(subject_path, remove_null=True):
     events = dataframe_from_csv(os.path.join(subject_path, 'events.csv'), index_col=None)

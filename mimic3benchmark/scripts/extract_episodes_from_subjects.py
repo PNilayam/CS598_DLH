@@ -40,11 +40,12 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
         stays = read_stays(os.path.join(args.subjects_root_path, subject_dir))
         diagnoses = read_diagnoses(os.path.join(args.subjects_root_path, subject_dir))
         events = read_events(os.path.join(args.subjects_root_path, subject_dir))
+        notes = read_notes(os.path.join(args.subjects_root_path, subject_dir))
     except:
         sys.stderr.write('Error reading from disk for subject: {}\n'.format(subject_id))
         continue
 
-    episodic_data = assemble_episodic_data(stays, diagnoses)
+    episodic_data = assemble_episodic_data(stays, diagnoses, notes)
 
     # cleaning and converting to time series
     events = map_itemids_to_variables(events, var_map)

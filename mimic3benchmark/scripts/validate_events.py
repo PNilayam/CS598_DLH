@@ -77,7 +77,7 @@ def main():
         icustay_missing_in_stays += (merged_df['ICUSTAY_ID'] != merged_df['ICUSTAY_ID_r']).sum()
         merged_df = merged_df[(merged_df['ICUSTAY_ID'] == merged_df['ICUSTAY_ID_r'])]
 
-        to_write = merged_df[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM']]
+        to_write = merged_df[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM', 'CATEGORY','DESCRIPTION','TEXT']]
         to_write.to_csv(os.path.join(args.subjects_root_path, subject, 'events.csv'), index=False)
 
     assert(could_not_recover == 0)

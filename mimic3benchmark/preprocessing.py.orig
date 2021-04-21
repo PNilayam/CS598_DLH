@@ -47,7 +47,7 @@ def transform_ethnicity(ethnicity_series):
     return {'Ethnicity': ethnicity_series.fillna('').apply(lambda s: e_map[s] if s in e_map else e_map['OTHER'])}
 
 
-def assemble_episodic_data(stays, diagnoses,notes):
+def assemble_episodic_data(stays, diagnoses):
     data = {'Icustay': stays.ICUSTAY_ID, 'Age': stays.AGE, 'Length of Stay': stays.LOS,
             'Mortality': stays.MORTALITY}
     data.update(transform_gender(stays.GENDER))
@@ -55,15 +55,8 @@ def assemble_episodic_data(stays, diagnoses,notes):
     data['Height'] = np.nan
     data['Weight'] = np.nan
     data = DataFrame(data).set_index('Icustay')
-    notes.set_index('ICUSTAY_ID',inplace=True)
-    notes.CHARTTIME.fillna(notes.CHARTDATE,inplace=True)
-    notes.drop(columns=['CHARTDATE','SUBJECT_ID','HADM_ID'],inplace=True)
-    #notes['LOS'] = np.where(stays.HADM_ID == notes.HADM_ID, stays.LOS, int(-1))
-    #notes['LOS'] = np.where(stays['HADM_ID'] == notes['HADM_ID'], stays['LOS'], int(-1))
     data = data[['Ethnicity', 'Gender', 'Age', 'Height', 'Weight', 'Length of Stay', 'Mortality']]
-    #return data.merge(extract_diagnosis_labels(diagnoses), left_index=True, right_index=True)
-    data.merge(extract_diagnosis_labels(diagnoses), left_index=True, right_index=True)
-    return data.merge(notes, left_index=True, right_index=True)
+    return data.merge(extract_diagnosis_labels(diagnoses), left_index=True, right_index=True)
 
 
 diagnosis_labels = ['4019', '4280', '41401', '42731', '25000', '5849', '2724', '51881', '53081', '5990', '2720',

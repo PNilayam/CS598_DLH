@@ -7,15 +7,28 @@ import numpy as np
 import os
 import pandas as pd
 from tqdm import tqdm
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import re
+
 from mimic3benchmark.util import dataframe_from_csv
 
-# Below functions declared by Rudra Bhaskar ###
+# Below 3 functions declared by Rudra Bhaskar ###
 
 
-def clean_notes(text):
+def replace_digits_with_char(text, replace_char=''):
+    """
+    Replace digits to `replace_char`
+    Example: I will be there on 22 april. => I will be there on dd april.
+    Args:
+        text (str): text
+        replace_char (str): character with which digit has to be replaced
+    Returns:
+        clean_text (str): clean text with replaced char for digits
+    """
+    regex_pattern = re.compile(r'[0-9]')
+    clean_text = regex_pattern.sub(replace_char, text)
+    return clean_text
+
+
+def remove_punctuations(text):
     """
     Removed special characters from text
     Example: he: I am going. are you coming? => he I am going. are you coming
@@ -26,23 +39,9 @@ def clean_notes(text):
     Returns:
         clean_text (str): cleaned text with removed special characters
     """
-    # regex_pattern = re.compile(r'[\,+\:\?\!\"\(\)!\'\.\%\[\]]+')
-    regex_pattern = re.compile( r'[\,+\<\>\_\#\*\[\n\]\/\:\?\!\"\(\)!\'\.\%\[\]]+')
+    regex_pattern = re.compile(r'[\,+\:\?\!\"\(\)!\'\.\%\[\]]+')
     clean_text = regex_pattern.sub(r' ', text)
     clean_text = clean_text.replace('-', '')
-    clean_text.lower()
-
-    pattern = re.compile(r'\b(' + r'|'.join(stopwords.words('english')) + r')\b\s*')
-    clean_text = pattern.sub('', clean_text)
-
-    replace_char = ''
-    regex_pattern = re.compile(r'[0-9]')
-    clean_text = regex_pattern.sub(replace_char, clean_text)
-
-    replace_char = ' '
-    regex_pattern = re.compile(r'\s+')
-    clean_text = regex_pattern.sub(replace_char, clean_text)
-
     return clean_text
 
 
@@ -53,11 +52,12 @@ def read_notes_table(mimic3_path):
     pats = pats[pats['ISERROR'] != 1]
     pats.CHARTDATE = pd.to_datetime(pats.CHARTDATE)
     pats.CHARTTIME = pd.to_datetime(pats.CHARTTIME)
-    pats.drop(columns=['ISERROR'],inplace=True)
-    pats['TEXT'] = pats['TEXT'].apply(clean_notes)
+    pats.drop(columns=['ISERROR'])
+    pats.apply(replace_digits_with_char, columns=['TEXT'])
+    pats.apply(remove_punctuations, columns=['TEXT'])
     return pats
 
-# END OF Below functions declared by RUdra Bhaskar ###
+# END OF Below 3 functions declared by RUdra Bhaskar ###
 
 
 def read_patients_table(mimic3_path):
@@ -100,10 +100,7 @@ def read_icd_diagnoses_table(mimic3_path):
 
 def read_events_table_by_row(mimic3_path, table):
     nb_rows = {'chartevents': 330712484,
-               'labevents': 27854056, 
-               'outputevents': 4349219,
-               'noteevents': 2083180
-              }
+               'labevents': 27854056, 'outputevents': 4349219}
     reader = csv.DictReader(
         open(os.path.join(mimic3_path, table.upper() + '.csv'), 'r'))
     for i, row in enumerate(reader):
@@ -181,11 +178,6 @@ def filter_diagnoses_on_stays(diagnoses, stays):
     return diagnoses.merge(stays[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID']].drop_duplicates(), how='inner',
                            left_on=['SUBJECT_ID', 'HADM_ID'], right_on=['SUBJECT_ID', 'HADM_ID'])
 
-#Added By BR
-def filter_notes_on_stays(notes, stays):
-    return notes.merge(stays[['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID']].drop_duplicates(), how='inner',
-                           left_on=['SUBJECT_ID', 'HADM_ID'], right_on=['SUBJECT_ID', 'HADM_ID'])
-
 
 def break_up_stays_by_subject(stays, output_path, subjects=None):
     subjects = stays.SUBJECT_ID.unique() if subjects is None else subjects
@@ -214,25 +206,11 @@ def break_up_diagnoses_by_subject(diagnoses, output_path, subjects=None):
         diagnoses[diagnoses.SUBJECT_ID == subject_id].sort_values(by=['ICUSTAY_ID', 'SEQ_NUM'])\
                                                      .to_csv(os.path.join(dn, 'diagnoses.csv'), index=False)
 
-#Added By BR
-def break_up_notes_by_subject(notes, output_path, subjects=None):
-    subjects = notes.SUBJECT_ID.unique() if subjects is None else subjects
-    nb_subjects = subjects.shape[0]
-    for subject_id in tqdm(subjects, total=nb_subjects, desc='Breaking up notes  by subjects'):
-        dn = os.path.join(output_path, str(subject_id))
-        try:
-            os.makedirs(dn)
-        except:
-            pass
-
-        notes[notes.SUBJECT_ID == subject_id].sort_values(by=['ICUSTAY_ID'])\
-                                                     .to_csv(os.path.join(dn, 'notes.csv'), index=False)
-
 
 def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
                                               items_to_keep=None, subjects_to_keep=None):
     obs_header = ['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID',
-                  'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM','CATEGORY','DESCRIPTION','TEXT']
+                  'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM']
     if items_to_keep is not None:
         items_to_keep = set([str(s) for s in items_to_keep])
     if subjects_to_keep is not None:
@@ -252,7 +230,6 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
         except:
             pass
         fn = os.path.join(dn, 'events.csv')
-        print('Writing events.csv to ', fn)
         if not os.path.exists(fn) or not os.path.isfile(fn):
             f = open(fn, 'w')
             f.write(','.join(obs_header) + '\n')
@@ -263,7 +240,7 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
         data_stats.curr_obs = []
 
     nb_rows_dict = {'chartevents': 330712484,
-                    'labevents': 27854056, 'outputevents': 4349219, 'noteevents':2083180}
+                    'labevents': 27854056, 'outputevents': 4349219}
     nb_rows = nb_rows_dict[table.lower()]
 
     for row, row_no, _ in tqdm(read_events_table_by_row(mimic3_path, table), total=nb_rows,
@@ -273,28 +250,14 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
             continue
         if (items_to_keep is not None) and (row['ITEMID'] not in items_to_keep):
             continue
-        if table is not 'noteevents':
-            row_out = {'SUBJECT_ID': row['SUBJECT_ID'],
-                       'HADM_ID': row['HADM_ID'],
-                       'ICUSTAY_ID': '' if 'ICUSTAY_ID' not in row else row['ICUSTAY_ID'],
-                       'CHARTTIME': row['CHARTTIME'],
-                       'ITEMID': row['ITEMID'],
-                       'VALUE': row['VALUE'],
-                       'VALUEUOM': row['VALUEUOM'],
-                       'CATEGORY': '',
-                       'DESCRIPTION': '',
-                       'TEXT': '' }
-        else:
-            row_out = {'SUBJECT_ID': row['SUBJECT_ID'],
-                       'HADM_ID': row['HADM_ID'],
-                       'ICUSTAY_ID': '' if 'ICUSTAY_ID' not in row else row['ICUSTAY_ID'],
-                       'CHARTTIME': row['CHARTTIME'],
-                       'ITEMID': '',
-                       'VALUE': '',
-                       'VALUEUOM': '',
-                       'CATEGORY': row['CATGORY'],
-                       'DESCRIPTION': row['DESCRIPTION'],
-                       'TEXT': row['TEXT'] }
+
+        row_out = {'SUBJECT_ID': row['SUBJECT_ID'],
+                   'HADM_ID': row['HADM_ID'],
+                   'ICUSTAY_ID': '' if 'ICUSTAY_ID' not in row else row['ICUSTAY_ID'],
+                   'CHARTTIME': row['CHARTTIME'],
+                   'ITEMID': row['ITEMID'],
+                   'VALUE': row['VALUE'],
+                   'VALUEUOM': row['VALUEUOM']}
         if data_stats.curr_subject_id != '' and data_stats.curr_subject_id != row['SUBJECT_ID']:
             write_current_observations()
         data_stats.curr_obs.append(row_out)
