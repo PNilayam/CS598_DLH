@@ -66,8 +66,17 @@ make_phenotype_label_matrix(phenotypes, stays).to_csv(os.path.join(args.output_p
                                                       index=False, quoting=csv.QUOTE_NONNUMERIC)
 
 if args.test:
-    pat_idx = np.random.choice(patients.shape[0], size=1000)
-    patients = patients.iloc[pat_idx]
+    #pat_idx = np.random.choice(patients.shape[0], size=20)
+    #patients = patients.iloc[pat_idx]
+    # Find patients as the start of the chartevents file
+    patient_list = []
+    for row, row_no, _ in read_events_table_by_row(args.mimic3_path, "CHARTEVENTS"):
+        if row['SUBJECT_ID'] not in patient_list:
+            patient_list.append(row['SUBJECT_ID'])
+        if len(patient_list) >= 20:
+            break
+    
+    patients = patients[patients['SUBJECT_ID'].isin(patient_list)]
     stays = stays.merge(patients[['SUBJECT_ID']], left_on='SUBJECT_ID', right_on='SUBJECT_ID')
     args.event_tables = [args.event_tables[0]]
     print('Using only', stays.shape[0], 'stays and only', args.event_tables[0], 'table')
@@ -79,4 +88,4 @@ items_to_keep = set(
     [int(itemid) for itemid in dataframe_from_csv(args.itemids_file)['ITEMID'].unique()]) if args.itemids_file else None
 for table in args.event_tables:
     read_events_table_and_break_up_by_subject(args.mimic3_path, table, args.output_path, items_to_keep=items_to_keep,
-                                              subjects_to_keep=subjects)
+                                              subjects_to_keep=subjects, test=args.test)

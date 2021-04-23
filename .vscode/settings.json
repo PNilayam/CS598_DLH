@@ -1,3 +1,5 @@
 {
     "python.pythonPath": "/mnt/data01/envs/benchmark/bin/python"
+    //"python.pythonPath": "/mnt/data01/envs/benchmark/bin/python"
+    //"python.pythonPath": "/usr/bin/anaconda3/envs/benchmark/bin/python"
 }

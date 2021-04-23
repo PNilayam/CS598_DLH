@@ -37,5 +37,41 @@
             ],
             "console": "integratedTerminal"
         },
+        {
+            "name": "Length of Stay Script",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3benchmark.scripts.create_length_of_stay",
+            "args": [
+                "alldata/data22apr_small/root",
+                "alldata/data22apr_small/length-of-stay/",
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Extract subjects",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3benchmark.scripts.extract_subjects",
+            "args": [
+                "--test"
+                "/mnt/data01/mimic-3/csv",
+                "/mnt/data01/mimic-3/benchmark-small",
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Validate events",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3benchmark.scripts.validate_events",
+            "args": [
+                "/mnt/data01/mimic-3/benchmark-small",
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
     ]
 }

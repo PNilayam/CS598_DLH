@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import os
+import shutil
 import argparse
 import pandas as pd
 from tqdm import tqdm
@@ -20,6 +21,7 @@ def main():
     recovered = 0                  # empty ICUSTAY_IDs are recovered according to stays.csv files (given HADM_ID)
     could_not_recover = 0          # empty ICUSTAY_IDs that are not recovered. This should be zero.
     icustay_missing_in_stays = 0   # ICUSTAY_ID does not appear in stays.csv. We exclude such events.
+    patients_removed = 0           # Number of patients removed
 
     parser = argparse.ArgumentParser()
     parser.add_argument('subjects_root_path', type=str,
@@ -44,8 +46,14 @@ def main():
         assert(len(stays_df['ICUSTAY_ID'].unique()) == len(stays_df['ICUSTAY_ID']))
         assert(len(stays_df['HADM_ID'].unique()) == len(stays_df['HADM_ID']))
 
-        events_df = pd.read_csv(os.path.join(args.subjects_root_path, subject, 'events.csv'), index_col=False,
-                                dtype={'HADM_ID': str, "ICUSTAY_ID": str})
+        try:
+            events_df = pd.read_csv(os.path.join(args.subjects_root_path, subject, 'events.csv'), index_col=False,
+                                    dtype={'HADM_ID': str, "ICUSTAY_ID": str})
+        except:
+            shutil.rmtree(os.path.join(args.subjects_root_path, subject))
+            patients_removed += 1
+            continue
+
         events_df.columns = events_df.columns.str.upper()
         n_events += events_df.shape[0]
 
@@ -88,6 +96,7 @@ def main():
     print('recovered: {}'.format(recovered))
     print('could_not_recover: {}'.format(could_not_recover))
     print('icustay_missing_in_stays: {}'.format(icustay_missing_in_stays))
+    print('patients_removed: {}'.format(patients_removed))
 
 
 if __name__ == "__main__":
