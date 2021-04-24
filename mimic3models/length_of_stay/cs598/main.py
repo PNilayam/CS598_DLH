@@ -63,9 +63,9 @@ class EpisodeDataset(Dataset):
 if __name__ == "__main__":
     print("main")
     DATA_PATH = "/Users/prashanti.nilayam/Desktop/temp/"
-    X_train, Y_train = preprocess(DATA_PATH, 'train')
+    X_train, Y_train = preprocess('train')
     train_dataset = EpisodeDataset(X_train, Y_train)
-    X_val, Y_val = preprocess(DATA_PATH, 'val')
+    X_val, Y_val = preprocess('val')
     val_dataset = EpisodeDataset(X_val, Y_val)
     learning_rate = 0.00001
     criterion = nn.MSELoss()
