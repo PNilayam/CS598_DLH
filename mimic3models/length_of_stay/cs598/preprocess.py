@@ -84,7 +84,7 @@ def preprocess(path):
     Y = torch.empty(0,)
     #y_df = pd.read_csv(DATA_PATH + path +'_listfile.csv') 
     #data_files = os.listdir(x_path)
-    print("Number of "+ path+ " files = "+len(data_files))
+    print("Number of "+ path+ " files = ",len(data_files))
     for data_file in tqdm(data_files):
         if data_file.endswith(".csv"):
             episode_df = pd.read_csv(TRAIN_PATH + data_file)
