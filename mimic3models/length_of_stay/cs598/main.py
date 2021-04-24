@@ -42,7 +42,7 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
             train_loss += loss.item()
             train_loss = train_loss / len(train_loader)
             print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch+1, train_loss))
-        eval_model(model, val_loader)
+    eval_model(model, val_loader)
 
 from torch.utils.data import Dataset
 
@@ -62,7 +62,7 @@ class EpisodeDataset(Dataset):
 
 if __name__ == "__main__":
     print("main")
-    DATA_PATH = "/Users/prashanti.nilayam/Desktop/temp/"
+    DATA_PATH =  "/mnt/data01/nilayam2/length-of-stay"
     X_train, Y_train = preprocess('train')
     train_dataset = EpisodeDataset(X_train, Y_train)
     X_val, Y_val = preprocess('val')
@@ -74,4 +74,4 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=32, shuffle=False)    
     train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 250, optimizer= optimizer, criterion = criterion)
-    torch.save(model.state_dict(), DATA_PATH+"/model.pt")
+    torch.save(model.state_dict(), "/mnt/data01/models/model.pt")
