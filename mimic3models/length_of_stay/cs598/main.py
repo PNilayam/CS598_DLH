@@ -74,3 +74,4 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=32, shuffle=False)    
     train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 250, optimizer= optimizer, criterion = criterion)
+    torch.save(model.state_dict(), DATA_PATH+"/model.pt")
