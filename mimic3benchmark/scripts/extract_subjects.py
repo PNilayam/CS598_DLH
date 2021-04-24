@@ -66,7 +66,7 @@ make_phenotype_label_matrix(phenotypes, stays).to_csv(os.path.join(args.output_p
                                                       index=False, quoting=csv.QUOTE_NONNUMERIC)
 
 if args.test:
-    #pat_idx = np.random.choice(patients.shape[0], size=20)
+    #pat_idx = np.random.choice(patients.shape[0], size=1000)
     #patients = patients.iloc[pat_idx]
     # Find patients as the start of the chartevents file
     patient_list = []

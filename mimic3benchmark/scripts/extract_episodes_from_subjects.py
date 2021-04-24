@@ -4,6 +4,8 @@ from __future__ import print_function
 import argparse
 import os
 import sys
+import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from mimic3benchmark.subject import read_stays, read_diagnoses, read_events, get_events_for_stay,\
@@ -12,6 +14,21 @@ from mimic3benchmark.subject import convert_events_to_timeseries, get_first_vali
 from mimic3benchmark.preprocessing import read_itemid_to_variable_map, map_itemids_to_variables, clean_events
 from mimic3benchmark.preprocessing import assemble_episodic_data
 
+def get_icu_stay_from_dt_func(stays):
+    def get_icu_stay(chartdate):
+        for i in range(len(stays["INTIME"])):
+            latest_start = max(stays["INTIME"].iloc[i], chartdate)
+            earliest_end = min(stays["OUTTIME"].iloc[i], chartdate)
+            if earliest_end < latest_start:
+                continue
+            # delta = (earliest_end - latest_start)
+            # delta = delta.days*24 + delta.seconds/3600
+            # overlap = max(0, delta)
+            # if overlap > 0:
+            else:
+                return int(stays["ICUSTAY_ID"].iloc[i])
+        return np.nan
+    return get_icu_stay
 
 parser = argparse.ArgumentParser(description='Extract episodes from per-subject data.')
 parser.add_argument('subjects_root_path', type=str, help='Directory containing subject sub-directories.')
@@ -21,10 +38,20 @@ parser.add_argument('--variable_map_file', type=str,
 parser.add_argument('--reference_range_file', type=str,
                     default=os.path.join(os.path.dirname(__file__), '../resources/variable_ranges.csv'),
                     help='CSV containing reference ranges for VARIABLEs.')
+parser.add_argument('--notes', action='store_true', help='NOTES: Process notes')
+parser.add_argument('--notes_csv_file', type=str,
+                    help='CSV file with all mimic clinical notes')
 args, _ = parser.parse_known_args()
 
 var_map = read_itemid_to_variable_map(args.variable_map_file)
 variables = var_map.VARIABLE.unique()
+
+if args.notes:
+    all_notes = pd.read_csv(args.notes_csv_file, 
+                            parse_dates=["CHARTTIME"], 
+                            infer_datetime_format=True)
+    all_notes.drop(all_notes[all_notes.ISERROR == 1].index, inplace=True)
+    all_notes.drop(columns="ISERROR", inplace=True)
 
 for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating over subjects'):
     dn = os.path.join(args.subjects_root_path, subject_dir)
@@ -43,6 +70,12 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
     except:
         sys.stderr.write('Error reading from disk for subject: {}\n'.format(subject_id))
         continue
+
+    if args.notes:
+        notes = all_notes[(all_notes["SUBJECT_ID"] == subject_id) & (~pd.isnull(all_notes["CHARTTIME"]))] \
+                    .sort_values(["CHARTTIME"])
+        notes["ICUSTAY_ID"] = notes['CHARTTIME'].apply(get_icu_stay_from_dt_func(stays))
+        notes = notes[notes['ICUSTAY_ID'].notna()]
 
     episodic_data = assemble_episodic_data(stays, diagnoses)
 
@@ -77,3 +110,10 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
         episode = episode[columns_sorted]
         episode.to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}_timeseries.csv'.format(i+1)),
                        index_label='Hours')
+
+        # aflanders: save notes
+        event_notes = notes[(notes["ICUSTAY_ID"] == stay_id)].copy()
+        event_notes['HOURS'] = (event_notes.CHARTTIME - intime).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60
+        event_notes = event_notes[["HOURS", "CATEGORY", "DESCRIPTION", "TEXT"]].set_index('HOURS').sort_index(axis=0)
+        event_notes.to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}_notes.csv'.format(i+1)),
+                        index_label='Hours')
