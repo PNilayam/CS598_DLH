@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F 
 import pandas as pd
 from preprocess import preprocess
-from model import EpisiodeCNN
+from model import EpisodeCNN
 from sklearn.metrics import mean_squared_error
 
 seed = 29
@@ -29,8 +29,8 @@ def eval_model(model, val_loader):
     return mse
 
 def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
-    model.train()
     for epoch in range(n_epochs):
+        model.train()
         train_loss = 0
         for x, y in train_loader:
             optimizer.zero_grad()
@@ -42,7 +42,7 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
             train_loss += loss.item()
             train_loss = train_loss / len(train_loader)
             print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch+1, train_loss))
-    eval_model(model, val_loader)
+        eval_model(model, val_loader)
 
 from torch.utils.data import Dataset
 
@@ -69,9 +69,9 @@ if __name__ == "__main__":
     val_dataset = EpisodeDataset(X_val, Y_val)
     learning_rate = 0.00001
     criterion = nn.MSELoss()
-    model = EpisiodeCNN()
+    model = EpisodeCNN()
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32,shuffle=True)                              
-    val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=32, shuffle=False)    
-    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 250, optimizer= optimizer, criterion = criterion)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
+    val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=128, shuffle=False)    
+    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 25, optimizer= optimizer, criterion = criterion)
     torch.save(model.state_dict(), "/mnt/data01/models/model.pt")
