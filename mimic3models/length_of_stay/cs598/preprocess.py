@@ -7,6 +7,12 @@ import pandas as pd
 replacement_map = None
 default_value_map = None
 prev_value_map = {}
+DATA_PATH = "/Users/prashanti.nilayam/Desktop/temp/"
+TRAIN_PATH = DATA_PATH + "/train/"
+train_y_df = pd.read_csv(DATA_PATH + 'train_listfile.csv') 
+train_files = train_y_df["stay"].unique().tolist()
+val_y_df = pd.read_csv(DATA_PATH + 'val_listfile.csv') 
+val_files = val_y_df["stay"].unique().tolist()
 
 with open('config.json') as f:
     config = json.load(f)
@@ -63,17 +69,24 @@ def get_window_indices(data_len):
     return indices
 
 
-def preprocess(DATA_PATH, path):
-    x_path = DATA_PATH +'/'+path+'/'
+def preprocess(path):
+    if path == 'train':
+        y_df = train_y_df
+        data_files = train_files
+    elif path == 'val':
+        y_df = val_y_df
+        data_files = val_files
+
+    #x_path = DATA_PATH +'/'+path+'/'
     X = torch.empty(0,17,4)
     Y = torch.empty(0,)
-    y_df = pd.read_csv(DATA_PATH + path +'_listfile.csv') 
-    data_files = os.listdir(x_path)
+    #y_df = pd.read_csv(DATA_PATH + path +'_listfile.csv') 
+    #data_files = os.listdir(x_path)
     print(data_files)
     for data_file in data_files:
         print(data_file)
         if data_file.endswith(".csv"):
-            episode_df = pd.read_csv(x_path + data_file)
+            episode_df = pd.read_csv(TRAIN_PATH + data_file)
             cleanup(episode_df)
             fill_missing_values(data_file, episode_df)
             episode_df["H_IDX"] = episode_df.Hours.apply(np.floor).astype('int32')
