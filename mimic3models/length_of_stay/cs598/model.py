@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F 
 
 
-class EpisiodeCNN(nn.Module):
+class EpisodeCNN(nn.Module):
     def __init__(self):
-        super(EpisiodeCNN, self).__init__()
+        super(EpisodeCNN, self).__init__()
         #input shape 1 * 17 * 4
         #output shape 17 * 17 * 4
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=17, kernel_size=3, padding=1, stride = 1)
