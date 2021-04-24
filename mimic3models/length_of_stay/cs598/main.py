@@ -9,6 +9,8 @@ import pandas as pd
 from preprocess import preprocess
 from model import EpisodeCNN
 from sklearn.metrics import mean_squared_error
+from tqdm import tqdm
+from tqdm import trange
 
 seed = 29
 random.seed(seed)
@@ -29,7 +31,7 @@ def eval_model(model, val_loader):
     return mse
 
 def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
-    for epoch in range(n_epochs):
+    for epoch in trange(n_epochs):
         model.train()
         train_loss = 0
         for x, y in train_loader:
@@ -73,5 +75,5 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=128, shuffle=False)    
-    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 25, optimizer= optimizer, criterion = criterion)
-    torch.save(model.state_dict(), "/mnt/data01/models/model.pt")
+    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 100, optimizer= optimizer, criterion = criterion)
+    torch.save(model.state_dict(), "/mnt/data01/models/cnn/model.pt")
