@@ -72,7 +72,8 @@ if __name__ == "__main__":
     X_val, Y_val = preprocess('val', True)
     val_dataset = EpisodeDataset(X_val, Y_val)
     learning_rate = 0.01
-    criterion = nn.L1Loss()
+    #criterion = nn.L1Loss()
+    criterion = nn.MSELoss()
     model = EpisodeCNN()
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
