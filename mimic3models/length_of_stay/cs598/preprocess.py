@@ -11,10 +11,13 @@ prev_value_map = {}
 DATA_PATH = "/mnt/data01/nilayam2/length-of-stay/"
 SAVED_TENSOR_PATH = DATA_PATH + "saved/"
 TRAIN_PATH = DATA_PATH + "train/"
+TEST_PATH = DATA_PATH + "test/"
 train_y_df = pd.read_csv(DATA_PATH + 'train_listfile.csv') 
 train_files = train_y_df["stay"].unique().tolist()
 val_y_df = pd.read_csv(DATA_PATH + 'val_listfile.csv') 
 val_files = val_y_df["stay"].unique().tolist()
+test_y_df = pd.read_csv(DATA_PATH + 'test_listfile.csv') 
+test_files = val_y_df["stay"].unique().tolist()
 
 with open('config.json') as f:
     config = json.load(f)
@@ -84,6 +87,7 @@ def preprocess(path, use_saved):
             Y = torch.load(SAVED_TENSOR_PATH+y_file_name) 
             return (X, Y)
     print("Processing "+ path +" files.")
+    preprocess_path = TRAIN_PATH
     if path == 'train':
         y_df = train_y_df
         #data_files = np.random.choice(train_files, 5000, replace=False)
@@ -92,6 +96,11 @@ def preprocess(path, use_saved):
         y_df = val_y_df
         #data_files = np.random.choice(val_files, 500, replace=False)
         data_files = val_files
+    else:
+        y_df = test_y_df
+        #data_files = test_files
+        data_files = np.random.choice(val_files, 50, replace=False)
+        preprocess_path = TEST_PATH
 
     #x_path = DATA_PATH +'/'+path+'/'
     X = torch.empty(0,17,4)
@@ -99,9 +108,10 @@ def preprocess(path, use_saved):
     #y_df = pd.read_csv(DATA_PATH + path +'_listfile.csv') 
     #data_files = os.listdir(x_path)
     print("Number of "+ path+ " files = ",len(data_files))
+    print("Reading from path : {}".format(preprocess_path))
     for data_file in tqdm(data_files):
         if data_file.endswith(".csv"):
-            episode_df = pd.read_csv(TRAIN_PATH + data_file)
+            episode_df = pd.read_csv(preprocess_path + data_file)
             cleanup(episode_df)
             fill_missing_values(data_file, episode_df)
             episode_df["H_IDX"] = episode_df.Hours.apply(np.floor).astype('int32')
