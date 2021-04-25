@@ -9,6 +9,7 @@ replacement_map = None
 default_value_map = None
 prev_value_map = {}
 DATA_PATH = "/mnt/data01/nilayam2/length-of-stay/"
+SAVED_TENSOR_PATH = DATA_PATH + "/saved/"
 TRAIN_PATH = DATA_PATH + "/train/"
 train_y_df = pd.read_csv(DATA_PATH + 'train_listfile.csv') 
 train_files = train_y_df["stay"].unique().tolist()
@@ -70,7 +71,18 @@ def get_window_indices(data_len):
     return indices
 
 
-def preprocess(path):
+def preprocess(path, use_saved):
+    x_file_name = path+"_X.pt"
+    y_file_name = path+"_Y.pt"
+    if use_saved:
+        print("Attempting to use saved files")
+        saved_files = os.listdir(SAVED_TENSOR_PATH)
+        print("Saved files : ", saved_files)
+        if x_file_name in saved_files and y_file_name in saved_files:
+            print("Loading X and Y from saved files. Will Skip processing")
+            X = torch.load(SAVED_TENSOR_PATH+x_file_name)
+            Y = torch.load(SAVED_TENSOR_PATH+y_file_name) 
+            return (X, Y)
     print("Processing "+ path +" files.")
     if path == 'train':
         y_df = train_y_df
@@ -110,4 +122,6 @@ def preprocess(path):
                 t_y_values = torch.tensor(y_values)
                 X = torch.cat((X, t_windows), 0)
                 Y = torch.cat((Y, t_y_values), 0)
+    torch.save(X, SAVED_TENSOR_PATH+x_file_name)
+    torch.save(Y, SAVED_TENSOR_PATH+y_file_name)
     return (X, Y)
