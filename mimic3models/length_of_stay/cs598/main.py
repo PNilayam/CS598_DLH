@@ -34,7 +34,6 @@ def eval_model(model, val_loader):
 def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
     for epoch in trange(n_epochs):
         model.train()
-        train_loss = 0
         for x, y in train_loader:
             optimizer.zero_grad()
             y_hat = model(x)
@@ -42,8 +41,7 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
             loss = criterion(y_hat, y)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item()
-            train_loss = train_loss / len(train_loader)
+            train_loss = loss.item()
             print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch+1, train_loss))
         eval_model(model, val_loader)
 
@@ -78,7 +76,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=128, shuffle=False)    
-    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 50, optimizer= optimizer, criterion = criterion)
+    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 20, optimizer= optimizer, criterion = criterion)
     torch.save(model.state_dict(), "/mnt/data01/models/cnn/model_v2.pt")
     end_time = time.time()
     total_time = end_time - start_time
