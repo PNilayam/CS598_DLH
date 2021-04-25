@@ -67,12 +67,13 @@ if __name__ == "__main__":
     print("main")
     start_time = time.time()
     DATA_PATH =  "/mnt/data01/nilayam2/length-of-stay"
-    X_train, Y_train = preprocess('train')
+    X_train, Y_train = preprocess('train', True)
     train_dataset = EpisodeDataset(X_train, Y_train)
-    X_val, Y_val = preprocess('val')
+    X_val, Y_val = preprocess('val', True)
     val_dataset = EpisodeDataset(X_val, Y_val)
     learning_rate = 0.01
-    criterion = nn.L1Loss()
+    #criterion = nn.L1Loss()
+    criterion = nn.MSELoss()
     model = EpisodeCNN()
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
