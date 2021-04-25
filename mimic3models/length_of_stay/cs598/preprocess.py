@@ -74,10 +74,12 @@ def preprocess(path):
     print("Processing "+ path +" files.")
     if path == 'train':
         y_df = train_y_df
-        data_files = np.random.choice(train_files, 5000, replace=False)
+        #data_files = np.random.choice(train_files, 5000, replace=False)
+        data_files = train_files
     elif path == 'val':
         y_df = val_y_df
-        data_files = np.random.choice(val_files, 500, replace=False)
+        #data_files = np.random.choice(val_files, 500, replace=False)
+        data_files = val_files
 
     #x_path = DATA_PATH +'/'+path+'/'
     X = torch.empty(0,17,4)

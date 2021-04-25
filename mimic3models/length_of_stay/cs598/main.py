@@ -11,6 +11,7 @@ from model import EpisodeCNN
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 from tqdm import trange
+import time
 
 seed = 29
 random.seed(seed)
@@ -64,16 +65,20 @@ class EpisodeDataset(Dataset):
 
 if __name__ == "__main__":
     print("main")
+    start_time = time.time()
     DATA_PATH =  "/mnt/data01/nilayam2/length-of-stay"
     X_train, Y_train = preprocess('train')
     train_dataset = EpisodeDataset(X_train, Y_train)
     X_val, Y_val = preprocess('val')
     val_dataset = EpisodeDataset(X_val, Y_val)
-    learning_rate = 0.00001
-    criterion = nn.MSELoss()
+    learning_rate = 0.01
+    criterion = nn.L1Loss()
     model = EpisodeCNN()
     optimizer = torch.optim.Adam(model.parameters(), lr =learning_rate )
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=128, shuffle=False)    
-    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 100, optimizer= optimizer, criterion = criterion)
-    torch.save(model.state_dict(), "/mnt/data01/models/cnn/model.pt")
+    train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = 50, optimizer= optimizer, criterion = criterion)
+    torch.save(model.state_dict(), "/mnt/data01/models/cnn/model_v2.pt")
+    end_time = time.time()
+    total_time = end_time - start_time
+    print("Total time taken : {} secs".format(total_time))
