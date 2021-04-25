@@ -66,7 +66,7 @@ class EpisodeDataset(Dataset):
 if __name__ == "__main__":
     print("main")
     start_time = time.time()
-    DATA_PATH =  "/mnt/data01/nilayam2/length-of-stay"
+    DATA_PATH =  "/mnt/data01/nilayam2/length-of-stay/"
     X_train, Y_train = preprocess('train', True)
     train_dataset = EpisodeDataset(X_train, Y_train)
     X_val, Y_val = preprocess('val', True)
