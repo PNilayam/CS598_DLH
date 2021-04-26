@@ -12,27 +12,50 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "LSTM Length of Stay",
+            "name": "LSTM Length of Stay (train)",
             "type": "python",
             "request": "launch",
             "module": "mimic3models.length_of_stay.main",
             "args": [
+                "--mode", "train",
                 "--network", "mimic3models/keras_models/lstm.py",
                 "--dim", "64",
                 "--timestep", "1.0",
                 "--depth", "1",
                 "--dropout", "0.3",
-                "--mode", "train",
                 "--batch_size", "256",
                 "--partition", "custom",
                 "--verbose", "1",
-                "--save_every", "1000",
-                "--epochs", "1",
-                "--train_batches", "200",
-                "--val_batches", "50",
+                "--save_every", "100",
+                "--epochs", "5",
+                "--train_batches", "1",
+                "--val_batches", "10",
                 "--workers", "3",
                 "--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
-                "--output_dir", "/mnt/data01/mimic-3/benchmark/length-of-stay/lstm",
+                "--output_dir", "/mnt/data01/models/lstm/custom",
+                "--load_state", "/mnt/data01/models/lstm/custom/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=custom.chunk11.test1.7840.state"
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "LSTM Length of Stay (test)",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3models.length_of_stay.main",
+            "args": [
+                "--mode", "test",
+                "--network", "mimic3models/keras_models/lstm.py",
+                "--dim", "64",
+                "--timestep", "1.0",
+                "--batch_size", "256",
+                "--partition", "custom",
+                "--verbose", "1",
+                "--val_batches", "10",
+                "--workers", "3",
+                "--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
+                "--output_dir", "/mnt/data01/models/lstm/custom",
+                "--load_state", "/mnt/data01/models/lstm/custom/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=custom.chunk11.test1.7840.state"
                 //"&>", "lstm44.log"
             ],
             "console": "integratedTerminal"
@@ -69,6 +92,20 @@
             "module": "mimic3benchmark.scripts.validate_events",
             "args": [
                 "/mnt/data01/mimic-3/benchmark-small",
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Extract episodes from subjects",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3benchmark.scripts.extract_episodes_from_subjects",
+            "args": [
+                //"/mnt/data01/mimic-3/benchmark-small",
+                "/mnt/data01/mimic-3/benchmark-notes",
+                //"--notes",
+                "--notes_csv_file", "/mnt/data01/mimic-3/csv/NOTEEVENTS.csv"
                 //"&>", "lstm44.log"
             ],
             "console": "integratedTerminal"

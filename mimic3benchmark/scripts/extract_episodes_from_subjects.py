@@ -50,6 +50,8 @@ if args.notes:
     all_notes = pd.read_csv(args.notes_csv_file, 
                             parse_dates=["CHARTTIME"], 
                             infer_datetime_format=True)
+    #TODO If Charttime is missing set from the chartdate
+    #notes.CHARTTIME.fillna(notes.CHARTDATE,inplace=True)
     all_notes.drop(all_notes[all_notes.ISERROR == 1].index, inplace=True)
     all_notes.drop(columns="ISERROR", inplace=True)
 
@@ -71,12 +73,6 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
         sys.stderr.write('Error reading from disk for subject: {}\n'.format(subject_id))
         continue
 
-    if args.notes:
-        notes = all_notes[(all_notes["SUBJECT_ID"] == subject_id) & (~pd.isnull(all_notes["CHARTTIME"]))] \
-                    .sort_values(["CHARTTIME"])
-        notes["ICUSTAY_ID"] = notes['CHARTTIME'].apply(get_icu_stay_from_dt_func(stays))
-        notes = notes[notes['ICUSTAY_ID'].notna()]
-
     episodic_data = assemble_episodic_data(stays, diagnoses)
 
     # cleaning and converting to time series
@@ -86,6 +82,12 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
         # no valid events for this subject
         continue
     timeseries = convert_events_to_timeseries(events, variables=variables)
+
+    if args.notes:
+        notes = all_notes[(all_notes["SUBJECT_ID"] == subject_id) & (~pd.isnull(all_notes["CHARTTIME"]))] \
+                    .sort_values(["CHARTTIME"])
+        notes["ICUSTAY_ID"] = notes['CHARTTIME'].apply(get_icu_stay_from_dt_func(stays))
+        notes = notes[notes['ICUSTAY_ID'].notna()]
 
     # extracting separate episodes
     for i in range(stays.shape[0]):
@@ -112,8 +114,9 @@ for subject_dir in tqdm(os.listdir(args.subjects_root_path), desc='Iterating ove
                        index_label='Hours')
 
         # aflanders: save notes
-        event_notes = notes[(notes["ICUSTAY_ID"] == stay_id)].copy()
-        event_notes['HOURS'] = (event_notes.CHARTTIME - intime).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60
-        event_notes = event_notes[["HOURS", "CATEGORY", "DESCRIPTION", "TEXT"]].set_index('HOURS').sort_index(axis=0)
-        event_notes.to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}_notes.csv'.format(i+1)),
-                        index_label='Hours')
+        if args.notes:
+            event_notes = notes[(notes["ICUSTAY_ID"] == stay_id)].copy()
+            event_notes['HOURS'] = (event_notes.CHARTTIME - intime).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60
+            event_notes = event_notes[["HOURS", "CATEGORY", "DESCRIPTION", "TEXT"]].set_index('HOURS').sort_index(axis=0)
+            event_notes.to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}_notes.csv'.format(i+1)),
+                            index_label='Hours')

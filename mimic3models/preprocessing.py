@@ -43,9 +43,6 @@ class Discretizer:
 
 
     def transform(self, X, header=None, end=None):
-        #TODO aflanders: Need to optimize this method which is a bottleneck to 
-        # training. Up to 13sec for batches of 512
-
         if header is None:
             header = self._header
         assert header[0] == "Hours"

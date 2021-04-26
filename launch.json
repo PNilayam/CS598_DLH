@@ -23,7 +23,7 @@
                 "--depth", "1",
                 "--dropout", "0.3",
                 "--mode", "train",
-                "--batch_size", "256",
+                "--batch_size", "64",
                 "--partition", "none", // regression, custom=classificaiton
                 "--verbose", "1",
                 "--save_every", "200",
@@ -32,7 +32,7 @@
                 "--val_batches", "10",
                 "--workers", "3",
                 //"--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
-                "--data", "/mnt/data01/rudra/mimic3-benchmarks/data/length-of-stay-org",
+                "--data", "/mnt/data01/mimic-3/benchmark/length-of-stay",
                 "--output_dir", "/mnt/data01/mimic-3/benchmark/length-of-stay/lstm",
                 //"--load_state", "/mnt/data01/alan/lstm_regression/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=none.chunk01.test17.2606.state"
                 //"&>", "logs/lstm01.log"
