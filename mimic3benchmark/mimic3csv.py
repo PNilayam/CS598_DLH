@@ -76,7 +76,11 @@ def merge_on_subject_admission(table1, table2):
 
 
 def add_age_to_icustays(stays):
-    stays['AGE'] = (stays.INTIME - stays.DOB).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60/24/365
+    # aflanders: Fix int64 overflow error
+    #stays['AGE'] = (stays.INTIME - stays.DOB).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60/24/365
+    stays['DOB'] = pd.to_datetime(stays['DOB']).dt.date
+    stays['INDATE'] = pd.to_datetime(stays['INTIME']).dt.date
+    stays['AGE'] = stays.apply(lambda e: (e['INDATE'] - e['DOB']).days/365, axis=1)
     stays.loc[stays.AGE < 0, 'AGE'] = 90
     return stays
 
@@ -142,7 +146,7 @@ def break_up_diagnoses_by_subject(diagnoses, output_path, subjects=None):
 
 
 def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
-                                              items_to_keep=None, subjects_to_keep=None):
+                                              items_to_keep=None, subjects_to_keep=None, test=False):
     obs_header = ['SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM']
     if items_to_keep is not None:
         items_to_keep = set([str(s) for s in items_to_keep])
@@ -173,6 +177,7 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
 
     nb_rows_dict = {'chartevents': 330712484, 'labevents': 27854056, 'outputevents': 4349219}
     nb_rows = nb_rows_dict[table.lower()]
+    subjects_written = {}
 
     for row, row_no, _ in tqdm(read_events_table_by_row(mimic3_path, table), total=nb_rows,
                                                         desc='Processing {} table'.format(table)):
@@ -191,6 +196,10 @@ def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path,
                    'VALUEUOM': row['VALUEUOM']}
         if data_stats.curr_subject_id != '' and data_stats.curr_subject_id != row['SUBJECT_ID']:
             write_current_observations()
+            if test:
+                subjects_written[data_stats.curr_subject_id] = 1
+                if len(subjects_written) == len(subjects_to_keep):
+                    break
         data_stats.curr_obs.append(row_out)
         data_stats.curr_subject_id = row['SUBJECT_ID']
 

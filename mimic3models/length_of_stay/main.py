@@ -17,6 +17,8 @@ from mimic3models import common_utils
 
 from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
 
+from tqdm import tqdm
+
 
 parser = argparse.ArgumentParser()
 common_utils.add_common_arguments(parser)
@@ -32,8 +34,8 @@ parser.add_argument('--output_dir', type=str, help='Directory relative which all
 # aflanders: Add additional arguments to tune training
 parser.add_argument('--train_batches', type=int, default=500,
     help='number of batches to train on per epoch')
-parser.add_argument('--val_batches', type=int, default=200,
-    help='number of batches to validate on per epoch')
+parser.add_argument('--val_batches', nargs='?', type=int, default=200,
+    help='Number of batches to validate or test. none for full test/validation')
 parser.add_argument('--workers', type=int, default=1,
     help='number of workers to load data')
 parser.add_argument('--stop_early_loss', type=float, default=0.001,
@@ -265,24 +267,37 @@ elif args.mode == 'test':
                                        normalizer=normalizer,
                                        partition=args.partition,
                                        batch_size=args.batch_size,
-                                       steps=None,  # put steps = None for a full test
+                                       steps=args.val_batches,  # put steps = None for a full test
                                        shuffle=False,
-                                       return_names=True)
+                                       verbose=args.verbose)
 
-        for i in range(test_data_gen.steps):
-            print("predicting {} / {}".format(i, test_data_gen.steps), end='\r')
+        y_true = []
+        predictions = []
 
-            ret = test_data_gen.next(return_y_true=True)
-            (x, y_processed, y) = ret["data"]
-            cur_names = ret["names"]
-            cur_ts = ret["ts"]
+        # for i in tqdm(range(test_data_gen.steps), desc='Predicting batches'):
+        #     print("predicting {} / {}".format(i, test_data_gen.steps), end='\r')
+        pred = model.predict(test_data_gen, 
+                            batch_size=args.batch_size, 
+                            verbose=args.verbose, 
+                            steps=args.val_batches,
+                            workers=args.workers,
+                            use_multiprocessing=True)
 
-            x = np.array(x)
-            pred = model.predict_on_batch(x)
-            predictions += list(pred)
-            labels += list(y)
-            names += list(cur_names)
-            ts += list(cur_ts)
+        y = test_data_gen.get_y(len(pred))
+        labels += list(y)
+        predictions += list(pred)
+
+            # ret = test_data_gen.next(return_y_true=True)
+            # (x, y_processed, y) = ret["data"]
+            # cur_names = ret["names"]
+            # cur_ts = ret["ts"]
+
+            # x = np.array(x)
+            # pred = model.predict_on_batch(x)
+            # predictions += list(pred)
+            # labels += list(y)
+            # names += list(cur_names)
+            # ts += list(cur_ts)
 
     if args.partition == 'log':
         predictions = [metrics.get_estimate_log(x, 10) for x in predictions]
