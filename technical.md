@@ -23,26 +23,26 @@ After activating the new environment install pytorch using conda install:
 
 ## Conda environment (benchmark)
 The benchmark used for comparison requires an environment created with Keras/Tensorflow. The environment must include:
-* Python 3.6
+* Python 3.6.8
 * Tensorflow
 * Keras
 
 Ensure that you create the environment according to requirements.txt
 
 Note that tensorflow is not listed in the requirements. For CPU install the correct version with conda:
-`conda install tensorflow==1.1.10`
+`conda install tensorflow`
 
 To run with GPU you will likely need to uninstall tensorflow and then re-install
 `pip uninstall tensorflow`
 
 This will also uninstall keras. Reinstall with:
-`conda install tensorflow-gpu==1.15`
+`conda install tensorflow-gpu`
 
 Also re-install keras:
 `conda install keras`
 
 To change back to CPU you can uninstall tensorflow using conda and then re-install:
-`conda install tensorflow==1.15`
+`conda install tensorflow`
 
 
 # Running the data pre-processing from mimic source

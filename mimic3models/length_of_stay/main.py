@@ -32,10 +32,10 @@ parser.add_argument('--output_dir', type=str, help='Directory relative which all
                     default='.')
 
 # aflanders: Add additional arguments to tune training
-parser.add_argument('--train_batches', type=int, default=500,
-    help='number of batches to train on per epoch')
+parser.add_argument('--train_batches', nargs='?', type=int, default=500,
+    help='number of batches to train on per epoch. Set param without value to train on all')
 parser.add_argument('--val_batches', nargs='?', type=int, default=200,
-    help='Number of batches to validate or test. none for full test/validation')
+    help='Number of batches to validate or test. Set parm without value for full test/validation')
 parser.add_argument('--workers', type=int, default=1,
     help='number of workers to load data')
 parser.add_argument('--stop_early_loss', type=float, default=0.001,
@@ -129,42 +129,43 @@ if args.load_state != "":
     model.load_weights(args.load_state)
     n_trained_chunks = int(re.match(".*chunk([0-9]+).*", args.load_state).group(1))
 
-# Load data and prepare generators
-if args.deep_supervision:
-    train_data_gen = utils.BatchGenDeepSupervision(train_data_loader, args.partition,
-                                                   discretizer, normalizer, args.batch_size, shuffle=True)
-    val_data_gen = utils.BatchGenDeepSupervision(val_data_loader, args.partition,
-                                                 discretizer, normalizer, args.batch_size, shuffle=False)
-else:
-    # Set number of batches in one epoch
-    # aflanders: Make the step count a parameter. The steps have been changed to be
-    # one batch size each
-    # train_nbatches = 2000
-    # val_nbatches = 1000
-    train_nbatches = args.train_batches
-    val_nbatches = args.val_batches
+if args.mode == 'train':
+    # Load data and prepare generators
+    if args.deep_supervision:
+        train_data_gen = utils.BatchGenDeepSupervision(train_data_loader, args.partition,
+                                                    discretizer, normalizer, args.batch_size, shuffle=True)
+        val_data_gen = utils.BatchGenDeepSupervision(val_data_loader, args.partition,
+                                                    discretizer, normalizer, args.batch_size, shuffle=False)
+    else:
+        # Set number of batches in one epoch
+        # aflanders: Make the step count a parameter. The steps have been changed to be
+        # one batch size each
+        # train_nbatches = 2000
+        # val_nbatches = 1000
+        train_nbatches = args.train_batches
+        val_nbatches = args.val_batches
 
-    if args.small_part:
-        train_nbatches = 20
-        val_nbatches = 20
+        if args.small_part:
+            train_nbatches = 20
+            val_nbatches = 20
 
-    train_data_gen = utils.BatchGen(reader=train_reader,
+        train_data_gen = utils.BatchGen(reader=train_reader,
+                                        discretizer=discretizer,
+                                        normalizer=normalizer,
+                                        partition=args.partition,
+                                        batch_size=args.batch_size,
+                                        steps=train_nbatches,
+                                        shuffle=True,
+                                        verbose=args.verbose)
+        val_data_gen = utils.BatchGen(reader=val_reader,
                                     discretizer=discretizer,
                                     normalizer=normalizer,
                                     partition=args.partition,
                                     batch_size=args.batch_size,
-                                    steps=train_nbatches,
-                                    shuffle=True,
+                                    steps=val_nbatches,
+                                    shuffle=False,
                                     verbose=args.verbose)
-    val_data_gen = utils.BatchGen(reader=val_reader,
-                                  discretizer=discretizer,
-                                  normalizer=normalizer,
-                                  partition=args.partition,
-                                  batch_size=args.batch_size,
-                                  steps=val_nbatches,
-                                  shuffle=False,
-                                  verbose=args.verbose)
-if args.mode == 'train':
+
     # Prepare training
     #aflanders: Make compatible with Tensorflow 2.0
     path = os.path.join(args.output_dir, 'keras_states/' + model.final_name + '.chunk{epoch:02d}.test{loss:.4f}.state')
@@ -220,8 +221,8 @@ if args.mode == 'train':
 
 elif args.mode == 'test':
     # ensure that the code uses test_reader
-    del train_data_gen
-    del val_data_gen
+    # del train_data_gen
+    # del val_data_gen
 
     names = []
     ts = []
@@ -229,8 +230,8 @@ elif args.mode == 'test':
     predictions = []
 
     if args.deep_supervision:
-        del train_data_loader
-        del val_data_loader
+        # del train_data_loader
+        # del val_data_loader
         test_data_loader = common_utils.DeepSupervisionDataLoader(dataset_dir=os.path.join(args.data, 'test'),
                                                                   listfile=os.path.join(args.data, 'test_listfile.csv'),
                                                                   small_part=args.small_part)
@@ -258,8 +259,8 @@ elif args.mode == 'test':
                     predictions.append(p)
                     names.append(name)
     else:
-        del train_reader
-        del val_reader
+        # del train_reader
+        # del val_reader
         test_reader = LengthOfStayReader(dataset_dir=os.path.join(args.data, 'test'),
                                          listfile=os.path.join(args.data, 'test_listfile.csv'))
         test_data_gen = utils.BatchGen(reader=test_reader,
@@ -283,7 +284,11 @@ elif args.mode == 'test':
                             workers=args.workers,
                             use_multiprocessing=True)
 
-        y = test_data_gen.get_y(len(pred))
+        names, ts, y = zip(*test_data_gen.get_truth(len(pred)))
+        names = list(names)
+        ts = list(ts)
+
+        # y = test_data_gen.get_y(len(pred))
         labels += list(y)
         predictions += list(pred)
 

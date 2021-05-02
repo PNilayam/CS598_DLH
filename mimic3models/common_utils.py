@@ -44,7 +44,11 @@ def read_chunk(reader, chunk_size):
 def read_chunk_index(reader, index, chunk_size):
     data = {}
     for i in range(index, index+chunk_size):
-        ret = reader.read_example(i)
+        try:
+            ret = reader.read_example(i)
+        except(ValueError):
+            print("Not reading full chunk. Last batch of samples.")
+            break
         for k, v in ret.items():
             if k not in data:
                 data[k] = []

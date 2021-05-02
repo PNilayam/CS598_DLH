@@ -1,0 +1,18 @@
+# TEST classification
+python -um mimic3models.length_of_stay.main --network mimic3models/keras_models/lstm.py --dim 64 --timestep 1.0 --mode test --batch_size 256 --partition custom --verbose 1 --val_batches --workers 12 --data /mnt/data01/mimic-3/benchmark/length-of-stay --output_dir /mnt/data01/models/lstm/custom --load_state /mnt/data01/models/lstm/custom/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=custom.chunk14.test1.7325.state &> logs/lstm.classifiation.test.d64.bs256.11.log &
+
+# TEST Regression
+python -um mimic3models.length_of_stay.main --network mimic3models/keras_models/lstm.py --dim 64 --timestep 1.0 --mode test --batch_size 256 --partition none --verbose 1 --val_batches --workers 12 --data /mnt/data01/mimic-3/benchmark/length-of-stay --output_dir /mnt/data01/models/lstm/regression --load_state /mnt/data01/models/lstm/regression/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=none.chunk08.test1.2235.state &> logs/lstm.regression.test.d64.bs256.10.log &
+
+
+# Train Classification
+python -um mimic3models.length_of_stay.main --network mimic3models/keras_models/lstm.py --dim 64 --timestep 1.0 --depth 1 --dropout 0.3 --mode train --batch_size 256 --partition custom --verbose 1 --save_every 500 --train_batches --val_batches 10 --workers 13 --epochs 1 --data /mnt/data01/mimic-3/benchmark/length-of-stay --output_dir /mnt/data01/models/lstm/custom --load_state /mnt/data01/models/lstm/custom/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=custom.chunk13.test1.7767.state &> logs/lstm.classification.d64.bs256.10.log &
+
+
+# Train regression
+python -um mimic3models.length_of_stay.main --network mimic3models/keras_models/lstm.py --dim 64 --timestep 1.0 --depth 1 --dropout 0.3 --mode train --batch_size 256 --partition none --verbose 1 --save_every 500 --train_batches --val_batches 10 --workers 13 --epochs 1 --data /mnt/data01/mimic-3/benchmark/length-of-stay --output_dir /mnt/data01/models/lstm/regression --load_state /mnt/data01/models/lstm/regression/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=none.chunk07.test1.5689.state &> logs/lstm.regression.d64.bs256.10.log &
+
+
+
+su -c 'while [[ -d /proc/2296 ]]; do sleep 1; done; poweroff'
+
