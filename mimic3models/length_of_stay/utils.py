@@ -99,6 +99,12 @@ class BatchGen(Sequence):
         else:
             return [x[2] for x in self.reader._data]
 
+    def get_truth(self, records=None):
+        if records:
+            return self.reader._data[:records]
+        else:
+            return self.reader._data
+
 
 class BatchGenDeepSupervision(object):
 
