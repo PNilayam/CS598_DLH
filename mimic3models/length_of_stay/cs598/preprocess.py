@@ -65,16 +65,22 @@ def fill_missing_values(pateint_id, episode_df):
     episode_df["pH"] = episode_df["pH"].apply(lambda x: process_column(pateint_id, x, "pH"))
     del prev_value_map[pateint_id]
 
-def get_window_indices(data_len):
+def get_window_indices(data_len, window_len = 4):
     i = 0
     indices = []
-    while i <= data_len-4:
-        indices.append([i, i+1, i+2, i+3])
+    while i <= data_len-window_len:
+        indices.append([i+j for j in range(window_len)])
         i +=1
     return indices
 
 
-def preprocess(path, use_saved):
+def get_one_hot_encoding(val, dim):
+    encoding = [0 for i in range (dim)]
+    encoding[val-1] = 1
+    return encoding
+
+
+def preprocess(path, use_saved, window_len = 4):
     x_file_name = path+"_X.pt"
     y_file_name = path+"_Y.pt"
     if use_saved:
@@ -103,7 +109,7 @@ def preprocess(path, use_saved):
         preprocess_path = TEST_PATH
 
     #x_path = DATA_PATH +'/'+path+'/'
-    X = torch.empty(0,17,4)
+    X = torch.empty(0,34,window_len)
     Y = torch.empty(0,)
     #y_df = pd.read_csv(DATA_PATH + path +'_listfile.csv') 
     #data_files = os.listdir(x_path)
@@ -121,7 +127,7 @@ def preprocess(path, use_saved):
             temp_y = temp_y[["period_length", "y_true"]].set_index("period_length")
             episode_df = episode_df.join(temp_y, how = "inner").drop('Hours', axis=1).reset_index(drop = True)
             if(len(episode_df) >0):
-                indices = get_window_indices(len(episode_df))
+                indices = get_window_indices(len(episode_df), window_len)
                 windows = []
                 y_values = []
                 for idx in indices:
