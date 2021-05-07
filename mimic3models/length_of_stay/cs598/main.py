@@ -17,6 +17,7 @@ import statistics
 import matplotlib
 import matplotlib.pyplot as plt
 from math import log
+from datetime import datetime
 
 seed = 29
 random.seed(seed)
@@ -34,7 +35,7 @@ parser.add_argument('--data', type=str, help='sample / all',default="all")
 parser.add_argument('--train_sample_size', type=int, help='if data == sample, provide training sample size',default=5000)
 parser.add_argument('--val_sample_size', type=int, help='if data == sample, provide training sample size',default=500)
 parser.add_argument('--test_sample_size', type=int, help='if data == sample, provide training sample size',default=5000)
-parser.add_argument('--model_output_dir', type=str, help='Model output dir',default='/mnt/data01/models/cnn/model_v2.pt')
+parser.add_argument('--model_output_dir', type=str, help='Model output dir',default='/mnt/data01/models/cnn/')
 
 args = parser.parse_args()
 print(args)
@@ -106,7 +107,9 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=args.batch_size, shuffle=False)    
     train_losses = train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = args.epochs, optimizer= optimizer, criterion = criterion)
-    torch.save(model.state_dict(), args.model_output_dir)
+    
+    model_path = "{}{}_{}_{}_{}.pt".format(args.model_output_dir, args.window,args.lr,args.batch_size, args.epochs)
+    torch.save(model.state_dict(), model_path)
 
     #save train losses as png
     matplotlib.use('Agg')
