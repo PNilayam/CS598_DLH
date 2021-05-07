@@ -81,8 +81,8 @@ def get_one_hot_encoding(val, dim):
 
 
 def preprocess(path, use_saved = True, window_len = 5, sample = False, sample_size = 5000):
-    x_file_name = path+"_"+window_len+"_X.pt"
-    y_file_name = path+"_"+window_len+"_Y.pt"
+    x_file_name = "{}_{}_X.pt".format(path, window_len)
+    y_file_name = "{}_{}_Y.pt".format(path, window_len)
     if use_saved:
         print("Attempting to use saved files")
         saved_files = os.listdir(SAVED_TENSOR_PATH)
