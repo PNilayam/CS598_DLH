@@ -39,12 +39,14 @@ parser.add_argument('--model_output_dir', type=str, help='Model output dir',defa
 
 args = parser.parse_args()
 print(args)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def eval_model(model, val_loader):
     model.eval()
     all_y_true = torch.DoubleTensor()
     all_y_pred = torch.DoubleTensor()
     for x, y in val_loader:
+        x = x.to(device)
         y_hat = model(x)
         all_y_true = torch.cat((all_y_true, y.to('cpu')), dim=0)
         all_y_pred = torch.cat((all_y_pred,  y_hat.to('cpu')), dim=0)
@@ -58,6 +60,7 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
         loss_per_epoch = []
         model.train()
         for x, y in train_loader:
+            x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             y_hat = model(x)
             y_hat = y_hat.view(y_hat.shape[0]).double()
@@ -103,6 +106,7 @@ if __name__ == "__main__":
     #criterion = nn.L1Loss()
     criterion = nn.MSELoss()
     model = EpisodeCNN()
+    model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr =args.lr)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=args.batch_size, shuffle=False)    
