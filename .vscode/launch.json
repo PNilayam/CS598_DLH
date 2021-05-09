@@ -110,5 +110,45 @@
             ],
             "console": "integratedTerminal"
         },
+        {
+            "name": "Logistic Regression",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3models.length_of_stay.logistic.main_cf_fix",
+            "args": [
+                "--data", "/mnt/data01/mimic-3/benchmark-small/length-of-stay",
+                "--output_dir", "/mnt/data01/models/linear_regression/logistic"
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "LSTM Length of Stay Notes (train)",
+            "type": "python",
+            "request": "launch",
+            "module": "mimic3models.length_of_stay.main_notes",
+            "args": [
+                "--mode", "train",
+                "--network", "mimic3models/keras_models/lstm_notes.py",
+                "--dim", "32",
+                "--sent_dim", "160",
+                "--timestep", "4",
+                "--depth", "1",
+                "--dropout", "0.3",
+                "--batch_size", "20",
+                "--partition", "custom",
+                "--verbose", "1",
+                "--save_every", "500",
+                "--epochs", "1",
+                "--train_batches", "200",
+                "--val_batches", "100",
+                "--workers", "1",
+                "--data", "/mnt/data01/mimic-3/benchmark-small/length-of-stay",
+                "--output_dir", "/mnt/data01/models/test/lstm/custom",
+                //"--load_state", "/mnt/data01/models/lstm/custom/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=custom.chunk11.test1.7840.state"
+                //"&>", "lstm44.log"
+            ],
+            "console": "integratedTerminal"
+        },
     ]
 }

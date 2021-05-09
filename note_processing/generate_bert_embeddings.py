@@ -23,7 +23,7 @@ from note_processing.heuristic_tokenize import sent_tokenize_rules
 # OUTPUT_DIR = Currently same as the input directory
 
 #'/mnt/data01/mimic-3/benchmark-notes/train'
-MIMIC_NOTES_PATHS = ['/mnt/data01/mimic-3/benchmark-notes/test', '/mnt/data01/mimic-3/benchmark-notes/train']  
+MIMIC_NOTES_PATHS = ['/mnt/data01/mimic-3/benchmark-small/test', '/mnt/data01/mimic-3/benchmark-small/train']  
 DEVICE = 0  # -1 is CPU otherwise the GPU device id
 MAX_SENT = 40
 MAX_TOKEN_LEN = 40

@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from sklearn.preprocessing import Imputer, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from mimic3benchmark.readers import LengthOfStayReader
 from mimic3models import common_utils
@@ -12,7 +13,7 @@ import os
 import numpy as np
 import argparse
 import json
-
+from tqdm import tqdm
 
 def read_and_extract_features(reader, count, period, features):
     read_chunk_size = 1000
@@ -20,7 +21,7 @@ def read_and_extract_features(reader, count, period, features):
     ys = []
     names = []
     ts = []
-    for i in range(0, count, read_chunk_size):
+    for i in tqdm(range(0, count, read_chunk_size), desc="Extracting features"):
         j = min(count, i + read_chunk_size)
         ret = common_utils.read_chunk(reader, j - i)
         X = common_utils.extract_features_from_rawdata(ret['X'], ret['header'], period, features)
@@ -68,7 +69,7 @@ def main():
         test_reader, test_reader.get_number_of_examples(), args.period, args.features)
 
     print('Imputing missing values ...')
-    imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
+    imputer = SimpleImputer(missing_values=np.nan, strategy='mean', verbose=0, copy=True)
     imputer.fit(train_X)
     train_X = np.array(imputer.transform(train_X), dtype=np.float32)
     val_X = np.array(imputer.transform(val_X), dtype=np.float32)
@@ -90,11 +91,13 @@ def main():
     common_utils.create_directory(result_dir)
 
     with open(os.path.join(result_dir, 'train_{}.json'.format(file_name)), "w") as res_file:
+        print("Training metrics")
         ret = print_metrics_regression(train_y, linreg.predict(train_X))
         ret = {k: float(v) for k, v in ret.items()}
         json.dump(ret, res_file)
 
     with open(os.path.join(result_dir, 'val_{}.json'.format(file_name)), 'w') as res_file:
+        print("Validation metrics")
         ret = print_metrics_regression(val_y, linreg.predict(val_X))
         ret = {k: float(v) for k, v in ret.items()}
         json.dump(ret, res_file)
@@ -102,6 +105,7 @@ def main():
     prediction = linreg.predict(test_X)
 
     with open(os.path.join(result_dir, 'test_{}.json'.format(file_name)), 'w') as res_file:
+        print("Test metrics")
         ret = print_metrics_regression(test_y, prediction)
         ret = {k: float(v) for k, v in ret.items()}
         json.dump(ret, res_file)

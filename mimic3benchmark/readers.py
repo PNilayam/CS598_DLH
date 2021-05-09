@@ -4,6 +4,8 @@ from __future__ import print_function
 import os
 import numpy as np
 import random
+import re
+import pandas as pd
 
 
 class Reader(object):
@@ -206,7 +208,7 @@ class LengthOfStayReader(Reader):
             name: Name of the sample.
         """
         if index < 0 or index >= len(self._data):
-            raise ValueError("Index must be from 0 (inclusive) to number of lines (exclusive).")
+            raise ValueError(f"Index ({index}) must be from 0 (inclusive) to number of lines ({len(self._data)}) (exclusive).")
 
         name = self._data[index][0]
         t = self._data[index][1]
@@ -218,6 +220,44 @@ class LengthOfStayReader(Reader):
                 "y": y,
                 "header": header,
                 "name": name}
+
+
+class LengthOfStayReader_Notes(LengthOfStayReader):
+    def __init__(self, dataset_dir, listfile=None, period_length=48.0, note_abr='bert', embed_dim=768):
+        """ Reader for in-hospital moratality prediction task with notes.
+
+        :note_abr: Extension for note sentence embeddings. Assume shape is (<# sent>, <embedding dim>)
+        """
+        LengthOfStayReader.__init__(self, dataset_dir, listfile)
+        self._note_abr = note_abr
+        self.embed_dim = embed_dim
+
+    def _read_timeseries(self, ts_filename, time_bound):
+        ret = []
+        patient_id = re.findall(r'[0-9]+_', ts_filename)[0][:-1]
+        episode = re.findall(r'episode[0-9]+_', ts_filename)[-1][7:-1]
+        test_train = re.findall(r'/(?:test|train)', self._dataset_dir)[-1][1:]
+
+        par_dir = os.path.abspath(os.path.join(self._dataset_dir, os.pardir))
+        par_dir = os.path.abspath(os.path.join(par_dir, os.pardir))
+
+        filename = f"episode{episode}_notes_{self._note_abr}.parquet"
+        filename = os.path.join(par_dir, test_train, patient_id, filename)
+        
+        columns = ["Hours", "CATEGORY", "DESCRIPTION", "TEXT_EMBEDDING"]
+        try:
+            df = pd.read_parquet(filename)
+            columns = list(df.columns)
+            df["Hours"] = df.index
+            columns.insert(0, "Hours")
+            df = df[columns]
+            df = df[df["Hours"] < time_bound + 1e-6]
+            ret = df.to_numpy()
+        except:
+            # TODO Remove hack
+            ret = np.zeros((0, self.embed_dim))
+
+        return (ret, columns)
 
 
 class PhenotypingReader(Reader):

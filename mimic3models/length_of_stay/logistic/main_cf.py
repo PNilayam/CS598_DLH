@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from sklearn.preprocessing import Imputer, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from mimic3benchmark.readers import LengthOfStayReader
 from mimic3models import common_utils
@@ -12,6 +13,7 @@ import numpy as np
 import argparse
 import os
 import json
+from tqdm import tqdm
 
 n_bins = 10
 
@@ -28,7 +30,7 @@ def read_and_extract_features(reader, count, period, features):
     ys = []
     names = []
     ts = []
-    for i in range(0, count, read_chunk_size):
+    for i in tqdm(range(0, count, read_chunk_size), desc="Extracting features"):
         j = min(count, i + read_chunk_size)
         ret = common_utils.read_chunk(reader, j - i)
         X = common_utils.extract_features_from_rawdata(ret['X'], ret['header'], period, features)
@@ -91,7 +93,7 @@ def main():
     print("test set shape: {}".format(test_X.shape))
 
     print('Imputing missing values ...')
-    imputer = Imputer(missing_values=np.nan, strategy='mean', axis=0, verbose=0, copy=True)
+    imputer = SimpleImputer(missing_values=np.nan, strategy='mean', verbose=0, copy=True)
     imputer.fit(train_X)
     train_X = np.array(imputer.transform(train_X), dtype=np.float32)
     val_X = np.array(imputer.transform(val_X), dtype=np.float32)
@@ -132,16 +134,19 @@ def main():
         test_predictions = np.array([metrics.get_estimate_custom(x, n_bins) for x in test_activations])
 
         with open(os.path.join(result_dir, 'train_{}.json'.format(model_name)), 'w') as f:
+            print("Training metrics")
             ret = metrics.print_metrics_custom_bins(train_actual, train_predictions)
             ret = {k: float(v) for k, v in ret.items()}
             json.dump(ret, f)
 
         with open(os.path.join(result_dir, 'val_{}.json'.format(model_name)), 'w') as f:
+            print("Validation metrics")
             ret = metrics.print_metrics_custom_bins(val_actual, val_predictions)
             ret = {k: float(v) for k, v in ret.items()}
             json.dump(ret, f)
 
         with open(os.path.join(result_dir, 'test_{}.json'.format(model_name)), 'w') as f:
+            print("Test metrics")
             ret = metrics.print_metrics_custom_bins(test_actual, test_predictions)
             ret = {k: float(v) for k, v in ret.items()}
             json.dump(ret, f)
