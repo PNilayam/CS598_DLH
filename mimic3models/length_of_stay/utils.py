@@ -20,8 +20,8 @@ def preprocess_chunk(data, ts, discretizer, normalizer=None):
 
 class BatchGen(Sequence):
 
-    def __init__(self, reader, partition, discretizer, normalizer,
-                 batch_size, steps, shuffle, return_names=False,
+    def __init__(self, reader, partition, discretizer,
+                 batch_size, steps, shuffle, normalizer=None, return_names=False,
                  verbose=0):
         self.reader = reader
         self.partition = partition

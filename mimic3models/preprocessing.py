@@ -215,6 +215,142 @@ class Discretizer:
         # print(f"Total write time:{self.tm_total}  Categorical write:{self.tm_write_categorical}  Value write:{self.tm_write_value}  Switch time:{self.tm_switch_time}")
 
 
+class Discretizer_Notes(Discretizer):
+    def __init__(self, timestep=0.8, store_masks=True, impute_strategy='zero', start_time='zero',
+                 config_path=os.path.join(os.path.dirname(__file__), 'resources/discretizer_config.json'),
+                 sent_dim=80):
+        
+        super().__init__(timestep, store_masks, impute_strategy, start_time,
+                    config_path)
+
+        self.sent_dim = sent_dim
+
+
+    def transform(self, X, header=None, end=None):
+        sent_dim = self.sent_dim
+
+        if header is None:
+            header = self._header
+        assert header[0] == "Hours"
+        eps = 1e-6
+
+        # N_channels = len(self._id_to_channel)
+        N_channels = 0
+        ts = [float(row[0]) for row in X]
+        for i in range(len(ts) - 1):
+            assert ts[i] < ts[i+1] + eps 
+
+        if self._start_time == 'relative':
+            first_time = ts[0]
+        elif self._start_time == 'zero':
+            first_time = 0
+        else:
+            raise ValueError("start_time is invalid")
+
+        if end is None:
+            max_hours = max(ts) - first_time
+        else:
+            max_hours = end - first_time
+
+        N_bins = int(max_hours / self._timestep + 1.0 - eps)
+
+        data = np.zeros(shape=(N_bins, sent_dim, 768), dtype=float)
+        total_data = 0
+        unused_data = 0
+
+        dropped_sents = 0
+        imputed_bins = 0
+
+        for row in X:  # output is ()
+            t = float(row[0]) - first_time
+            if t > max_hours + eps:
+                continue
+            bin_id = int(t / self._timestep - eps)
+            assert 0 <= bin_id < N_bins
+
+            embedding = row[3]
+            
+            start = 0
+            while start < sent_dim and data[bin_id, start, 0] != 0:
+                start += 1
+
+            if start >= sent_dim:
+                dropped_sents += embedding.shape[0]
+                continue
+
+            over = (start + embedding.shape[0]) - sent_dim
+            dropped_sents += over if over > 0 else 0
+            remaining = embedding.shape[0] if over < 0 else sent_dim - start
+            remain_embedding = np.stack(embedding[:remaining])
+            data[bin_id, start:start+remaining] = remain_embedding
+
+        # impute missing values
+        if self._impute_strategy not in ['zero', 'normal_value', 'previous', 'next']:
+            raise ValueError("impute strategy is invalid")
+
+        if self._impute_strategy in ['normal_value']:
+            raise NotImplementedError(self.__class__.__name__ + ': impute strategy normal not implemented')
+
+        if self._impute_strategy in ['previous']:
+            prev_data = []
+            for bin_id in range(N_bins):
+                if data[bin_id,0,0] > 0:
+                    prev_data = data[bin_id]
+                    imputed_bins += 1
+                elif len(prev_data) > 0:
+                    data[bin_id] = prev_data
+                
+        if self._impute_strategy in ['next']:
+            raise NotImplementedError(self.__class__.__name__ + ': impute strategy next not implemented')
+            # prev_values = [[] for i in range(len(self._id_to_channel))]
+            # for bin_id in range(N_bins-1, -1, -1):
+            #     for channel in self._id_to_channel:
+            #         channel_id = self._channel_to_id[channel]
+            #         if mask[bin_id][channel_id] == 1:
+            #             prev_values[channel_id].append(original_value[bin_id][channel_id])
+            #             continue
+            #         if len(prev_values[channel_id]) == 0:
+            #             imputed_value = self._normal_values[channel]
+            #         else:
+            #             imputed_value = prev_values[channel_id][-1]
+            #         # self.enter = time.process_time()
+            #         write(data, bin_id, channel, imputed_value, begin_pos)
+
+        self._done_count += 1
+        self._empty_bins_sum += imputed_bins
+        self._unused_data_sum += dropped_sents
+
+        # Override storing of masks, not applicable for only notes
+        # if self._store_masks:
+        #     data = np.hstack([data, mask.astype(np.float32)])
+
+        # create new header
+        new_header = ["TEXT_EMBEDDING"]
+
+        # if self._store_masks:
+        #     for i in range(len(self._id_to_channel)):
+        #         channel = self._id_to_channel[i]
+        #         new_header.append("mask->" + channel)
+
+        new_header = ",".join(new_header)
+
+        return (data, new_header)
+
+    def print_statistics(self):
+        print("statistics of discretizer:")
+        print("\tconverted {} examples".format(self._done_count))
+        print(f"\tsentences dropped = {self._unused_data_sum}")
+        print("\taverage empty bins = {:.2f} percent".format(100.0 * self._empty_bins_sum / self._done_count))
+
+        # s = io.StringIO()
+        # sortby = 'cumulative'
+        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
+
+        # print(f"Total write time:{self.tm_total}  Categorical write:{self.tm_write_categorical}  Value write:{self.tm_write_value}  Switch time:{self.tm_switch_time}")
+
+
 class Normalizer:
     def __init__(self, fields=None):
         self._means = None

@@ -43,16 +43,25 @@ def read_chunk(reader, chunk_size):
 #aflanders: Add to support Sequence reader
 def read_chunk_index(reader, index, chunk_size):
     data = {}
+    error = False
     for i in range(index, index+chunk_size):
         try:
             ret = reader.read_example(i)
-        except(ValueError):
+        except ValueError as e:
+            # TODO Need to fix when not reading full chunk
             print("Not reading full chunk. Last batch of samples.")
-            break
+            if len(data) == 0:
+                ret = reader.read_example(0)
+                error = True
+            else:
+                break
         for k, v in ret.items():
             if k not in data:
                 data[k] = []
             data[k].append(v)
+        
+        if error:
+            break
     data["header"] = data["header"][0]
     return data
 #aflanders: Add to support Sequence reader
