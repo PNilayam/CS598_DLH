@@ -7,7 +7,9 @@ import threading
 import os
 import numpy as np
 import random
+import time
 #aflanders: Support for multi-processing; BatchGen was re-built; One batch is processed at a time
+
 from keras.utils import Sequence
 
 
@@ -45,6 +47,7 @@ class BatchGen(Sequence):
 
     #aflanders: Note - the index passed in is the step index which is used to locate the dataindex and read the next B entries
     def getitem(self, index, return_y_true=False):
+        start = time.time()
         # if self.verbose == 1:
         #     print(f"Start: {index} from reader:{self.reader.listfile}")
 
@@ -79,6 +82,7 @@ class BatchGen(Sequence):
 
         # if self.verbose == 1:
         #     print(f"End: {index} from reader:{self.reader.listfile}")
+        # print(f"Read a batch of {B} in {time.time() - start} seconds")
 
         if not self.return_names:
             return batch_data

@@ -24,8 +24,12 @@ su -c 'while [[ -d /proc/2296 ]]; do sleep 1; done; poweroff'
 
 
 # Train RNN regression w/ Notes
-python -um mimic3models.length_of_stay.main_notes --network mimic3models/keras_models/lstm_notes.py --dim 64 --sent_dim 160 --timestep 4 --depth 1 --dropout 0.3 --mode train --batch_size 8 --partition none --verbose 1 --save_every 5000 --train_batches --val_batches --workers 14 --epochs 1 --data /mnt/data01/mimic-3/benchmark-small/length-of-stay --output_dir /mnt/data01/models/lstm_notes/regression  &> logs/lstm.notes.regression.d64.bs4.01.log &
+nohup python -um mimic3models.length_of_stay.main_notes --network mimic3models/keras_models/lstm_notes.py --dim 64 --sent_dim 80 --timestep 1 --depth 1 --dropout 0.3 --mode train --batch_size 8 --partition none --verbose 1 --save_every 2000 --train_batches --val_batches 200 --workers 12 --epochs 2 --data /mnt/data01/mimic-3/benchmark-notes/length-of-stay --output_dir /mnt/data01/models/lstm_notes_bert/regression &> logs/lstm.notes.regression.d64.bs8.02.log &
 
 
 # Debug test on small batch (LSTM)
 python -um mimic3models.length_of_stay.main --network mimic3models/keras_models/lstm.py --dim 64 --timestep 1.0 --mode test --batch_size 256 --partition none --verbose 1 --val_batches --workers 2 --data /mnt/data01/mimic-3/benchmark-small/length-of-stay --output_dir /mnt/data01/models/debug/lstm/regression --load_state /mnt/data01/models/lstm/regression/keras_states/k_lstm.n64.d0.3.dep1.bs256.ts1.0.partition=none.chunk08.test1.2235.state &> logs/lstm.regression.debug.test.d64.bs256.01.log &
+
+
+# Create window tensors
+nohup python -um note_processing.create_note_window_tensor &> /home/aflanders/CS598_DLH/logs/create_note_bin_tensor_bert06.log &

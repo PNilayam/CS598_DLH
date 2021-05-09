@@ -10,8 +10,11 @@ import glob
 import os
 from tqdm import tqdm
 tqdm.pandas()
-from note_processing.heuristic_tokenize import sent_tokenize_rules 
+
+#from note_processing.heuristic_tokenize import sent_tokenize_rules 
 from mimic3models.preprocessing import Discretizer_Notes
+
+
 
 LOS_PATH = "/mnt/data01/mimic-3/benchmark-notes/length-of-stay"
 LISTFILES = ["test_listfile.csv", "train_listfile.csv", "val_listfile.csv"]
@@ -109,6 +112,12 @@ def process_episode(tup):
 
         patient_id = re.findall(r'[0-9]+_', ts_filename)[0][:-1]
         episode = re.findall(r'episode[0-9]+_', ts_filename)[-1][7:-1]
+        par_dir = os.path.abspath(os.path.join(LOS_PATH, os.pardir))
+
+        outfile = f"episode{episode}_notes_{NOTEABR}_window{WINDOW}-{STEPSIZE}_tensor.parquet"
+        path = os.path.join(par_dir, test_train, patient_id)
+        if os.path.exists(os.path.join(path, outfile)) or not os.path.exists(os.path.join(path, f"episode{episode}_notes_{NOTEABR}.parquet")):
+            return outfile
         
         df, filename = get_episode_embeddings(tup)
         
@@ -120,9 +129,8 @@ def process_episode(tup):
                 (tensor, header) = discretizer.transform(df_np, header=None, end=int(tup["period_length"]))
                 tensor, masks = create_windows(tensor)
 
-                outfile = f"episode{episode}_notes_{NOTEABR}_window{WINDOW}-{STEPSIZE}_tensor.parquet"
                 out_df = pd.DataFrame([{"TEXT_WINDOW_EMBEDDING": tensor.tolist()}])
-                out_df.to_parquet(os.path.join(os.path.dirname(filename), outfile))
+                out_df.to_parquet(os.path.join(path, outfile))
             else:
                 outfile = None
         except BaseException as e:
