@@ -260,6 +260,33 @@ class LengthOfStayReader_Notes(LengthOfStayReader):
         return (ret, columns)
 
 
+class LengthOfStayReader_Notes_Embedding(LengthOfStayReader_Notes):
+    def _read_timeseries(self, ts_filename, time_bound):
+        BINSIZE = 5
+        ret = []
+        patient_id = re.findall(r'[0-9]+_', ts_filename)[0][:-1]
+        episode = re.findall(r'episode[0-9]+_', ts_filename)[-1][7:-1]
+        test_train = re.findall(r'/(?:test|train)', self._dataset_dir)[-1][1:]
+
+        par_dir = os.path.abspath(os.path.join(self._dataset_dir, os.pardir))
+        par_dir = os.path.abspath(os.path.join(par_dir, os.pardir))
+
+        filename = f"episode{episode}_notes_{self._note_abr}_bin{BINSIZE}_tensor.parquet"
+        filename = os.path.join(par_dir, test_train, patient_id, filename)
+        
+        columns = ["TEXT_BIN_EMBEDDING"]
+        tbin = int(time_bound / BINSIZE)
+        try:
+            df = pd.read_parquet(filename)
+            embedding = np.stack([np.stack(x) for x in df["TEXT_BIN_EMBEDDING"].iloc[0]])
+            ret = embedding[:tbin+1]
+        except BaseException as e:
+            # TODO Remove hack
+            ret = np.zeros((tbin, 80, self.embed_dim))
+
+        return (ret, columns)
+
+
 class PhenotypingReader(Reader):
     def __init__(self, dataset_dir, listfile=None):
         """ Reader for phenotype classification task.

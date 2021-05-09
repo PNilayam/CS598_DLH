@@ -8,9 +8,9 @@ import imp
 import re
 
 from mimic3models.length_of_stay import utils
-from mimic3benchmark.readers import LengthOfStayReader_Notes
+from mimic3benchmark.readers import LengthOfStayReader_Notes_Embedding
 
-from mimic3models.preprocessing import Discretizer_Notes
+from mimic3models.preprocessing import Discretizer_Notes_Embedding
 from mimic3models import metrics
 from mimic3models import keras_utils
 from mimic3models import common_utils
@@ -67,14 +67,14 @@ if args.deep_supervision:
                                                              listfile=os.path.join(args.data, 'val_listfile.csv'),
                                                              small_part=args.small_part)
 else:
-    train_reader = LengthOfStayReader_Notes(dataset_dir=os.path.join(args.data, 'train'),
+    train_reader = LengthOfStayReader_Notes_Embedding(dataset_dir=os.path.join(args.data, 'train'),
                                       listfile=os.path.join(args.data, 'train_listfile.csv'),
                                       embed_dim=args.embed_dim)
-    val_reader = LengthOfStayReader_Notes(dataset_dir=os.path.join(args.data, 'train'),
+    val_reader = LengthOfStayReader_Notes_Embedding(dataset_dir=os.path.join(args.data, 'train'),
                                     listfile=os.path.join(args.data, 'val_listfile.csv'),
                                     embed_dim=args.embed_dim)
 
-discretizer = Discretizer_Notes(timestep=args.timestep,
+discretizer = Discretizer_Notes_Embedding(timestep=args.timestep,
                           store_masks=True,
                           impute_strategy='previous',
                           start_time='zero',
@@ -135,7 +135,7 @@ else:
 
 model.compile(optimizer=optimizer_config,
             loss=loss_function)
-            # run_eagerly=True)  # Debug mode
+            #run_eagerly=True)  # Debug mode
 model.summary()
 
 
@@ -229,7 +229,7 @@ if args.mode == 'train':
             callbacks=[metrics_callback, saver, csv_logger, earlyStopping],
             verbose=args.verbose,
             workers=args.workers,
-            use_multiprocessing=True)
+            use_multiprocessing=False)
     print("==> /training")
 
     discretizer.print_statistics()

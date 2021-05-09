@@ -342,13 +342,21 @@ class Discretizer_Notes(Discretizer):
         print(f"\tsentences dropped = {self._unused_data_sum}")
         print("\taverage empty bins = {:.2f} percent".format(100.0 * self._empty_bins_sum / self._done_count))
 
-        # s = io.StringIO()
-        # sortby = 'cumulative'
-        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
 
-        # print(f"Total write time:{self.tm_total}  Categorical write:{self.tm_write_categorical}  Value write:{self.tm_write_value}  Switch time:{self.tm_switch_time}")
+
+
+class Discretizer_Notes_Embedding(Discretizer_Notes):
+    def transform(self, X, header=None, end=None):
+        # The data is coming in already processed
+        data = X
+
+        # create new header
+        new_header = ["TEXT_EMBEDDING"]
+        new_header = ",".join(new_header)
+        
+        self._done_count += 1
+
+        return (data, new_header)
 
 
 class Normalizer:

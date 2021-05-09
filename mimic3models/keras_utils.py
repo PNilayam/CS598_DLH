@@ -190,7 +190,7 @@ class LengthOfStayMetrics(keras.callbacks.Callback):
                                 verbose=self.verbose, 
                                 steps=data_gen.steps,
                                 workers=self.workers,
-                                use_multiprocessing=True)
+                                use_multiprocessing=False)
 
         #TODO aflanders: Unsure exactly what "deep supervision does" but re-write will
         # be required to make it work
