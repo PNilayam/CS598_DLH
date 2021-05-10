@@ -97,8 +97,9 @@ class NotesNet(nn.Module):
 
 
 class EpisodeNet(nn.Module):
-    def __init__(self):
+    def __init__(self, mode = "both"):
         super(EpisodeNet, self).__init__()
+        self.mode = mode
         self.physio_net = PhysioNet()
         self.notes_net = NotesNet()
         self.fc1 = nn.Linear(64, 16)

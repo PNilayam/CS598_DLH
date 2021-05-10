@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from math import log
 from datetime import datetime
 from functools import lru_cache
+import gc
 
 seed = 29
 random.seed(seed)
@@ -56,27 +57,35 @@ def load_notes_embeddings(patient_id, episode, folder = "train"):
 
 def eval_model(model, val_loader):
     model.eval()
-    all_y_true = torch.DoubleTensor()
-    all_y_pred = torch.DoubleTensor()
+    #all_y_true = torch.DoubleTensor()
+    #all_y_pred = torch.DoubleTensor()
+    mses = []
     for x, y in val_loader:
-        x = x.to(device)
+        #x = x.to(device)
+        x= x.cuda()
         #print("x_val is {}".format(x.is_cuda))
         y_hat = model(x)
-        all_y_true = torch.cat((all_y_true, y), dim=0)
-        all_y_pred = torch.cat((all_y_pred,  y_hat.to('cpu')), dim=0)
-    mse= mean_squared_error(all_y_true.detach().numpy(), all_y_pred.detach().numpy())
+        mse= mean_squared_error(y.detach().numpy(), y_hat.cpu().detach().numpy())
+        mses.append(mse)
+        #all_y_true = torch.cat((all_y_true, y), dim=0)
+        #all_y_pred = torch.cat((all_y_pred,  y_hat.to('cpu')), dim=0)
+    mse= statistics.mean(mses)
+    #mse= mean_squared_error(all_y_true.detach().numpy(), all_y_pred.detach().numpy())
     print(f"mse: {mse:.3f}")
     return mse
 
 def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
-    train_losses = []
+    train_losses = [0 for i in range(n_epochs)]
+    mses =[0 for i in range(n_epochs)]
     for epoch in trange(n_epochs):
+        print("Starting training for epoch {}".format(epoch+1))
+        torch.cuda.empty_cache()
         loss_per_epoch = []
         model.train()
         for x, notes_x, y in train_loader:
-            x, y = x.to(device), y.to(device)
+            x, y = x.cuda(), y.cuda()
             if notes_x is not None:
-                notes_x = notes_x.to(device)
+                notes_x = notes_x.cuda()
             optimizer.zero_grad()
             y_hat = model(x, notes_x)
             y_hat = y_hat.view(y_hat.shape[0]).double()
@@ -88,9 +97,11 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
             #print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch+1, train_loss))
         epoch_loss = statistics.mean(loss_per_epoch)
         print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch+1, epoch_loss))
-        eval_model(model, val_loader)
-        train_losses.append(epoch_loss)
-    return train_losses
+        mse = eval_model(model, val_loader)
+        mses[epoch] = mse
+        train_losses[epoch] = epoch_loss
+        gc.collect()
+    return train_losses, mses
 
 from torch.utils.data import Dataset
 
@@ -142,16 +153,23 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr =args.lr)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True)                              
     val_loader = torch.utils.data.DataLoader(val_dataset,batch_size=args.batch_size, shuffle=False)    
-    train_losses = train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = args.epochs, optimizer= optimizer, criterion = criterion)
+    train_losses, val_mses = train(model= model, train_loader = train_loader, val_loader= val_loader, n_epochs = args.epochs, optimizer= optimizer, criterion = criterion)
     
     model_path = "{}{}_{}_{}_{}.pt".format(args.model_output_dir, args.window,args.lr,args.batch_size, args.epochs)
     torch.save(model.state_dict(), model_path)
 
     #save train losses as png
     matplotlib.use('Agg')
+    plt.figure(0)
+    plt.xticks([i for i in range(args.epochs)])
     train_losses = [log(y) for y in train_losses]
     plt.plot(train_losses)
     plt.savefig('train_{}_{}_{}_{}.png'.format(args.window,args.lr,args.batch_size, args.epochs))
+
+    plt.figure(1)
+    plt.xticks([i for i in range(args.epochs)])
+    plt.plot(val_mses)
+    plt.savefig('val_{}_{}_{}_{}.png'.format(args.window,args.lr,args.batch_size, args.epochs))
 
     end_time = time.time()
     total_time = end_time - start_time
