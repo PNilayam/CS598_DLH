@@ -73,10 +73,12 @@ def train(model, train_loader, val_loader, n_epochs, optimizer, criterion):
     for epoch in trange(n_epochs):
         loss_per_epoch = []
         model.train()
-        for x, y in train_loader:
+        for x, notes_x, y in train_loader:
             x, y = x.to(device), y.to(device)
+            if notes_x is not None:
+                notes_x = notes_x.to(device)
             optimizer.zero_grad()
-            y_hat = model(x)
+            y_hat = model(x, notes_x)
             y_hat = y_hat.view(y_hat.shape[0]).double()
             loss = criterion(y_hat, y)
             loss.backward()
@@ -94,11 +96,12 @@ from torch.utils.data import Dataset
 
 class EpisodeDataset(Dataset):
     
-    def __init__(self, obs, los, index_df, folder="train"):
+    def __init__(self, obs, los, index_df, folder="train", mode = "both"):
         self.x = obs
         self.y = los
         self.index = index_df
         self.folder = folder
+        self.mode = mode
     
     def __len__(self):
         return len(self.y)
@@ -108,9 +111,11 @@ class EpisodeDataset(Dataset):
         #print("Index is ", idx)
         #print("patient_id ", idx.iat[0,1])
         #print("episode ", idx.iat[0,2])
-        pe_notes = load_notes_embeddings(idx.iat[0,1], idx.iat[0,2], self.folder)
-        #print(pe_notes.shape)
-        notes = pe_notes[idx.iat[0,3]]
+        notes = None
+        if self.mode != "physio":
+            pe_notes = load_notes_embeddings(idx.iat[0,1], idx.iat[0,2], self.folder)
+            #print(pe_notes.shape)
+            notes = pe_notes[idx.iat[0,3]]
         return (self.x[index], notes, self.y[index])
         
 
@@ -124,21 +129,15 @@ if __name__ == "__main__":
         sample = True
     X_train, Y_train, index_train = preprocess('train', use_saved=args.use_saved, window_len=args.window, sample=sample, sample_size=args.train_sample_size)
     #X_train, Y_train = X_train.to(device), Y_train.to(device)
-    train_dataset = EpisodeDataset(X_train, Y_train, index_df=index_train)
+    train_dataset = EpisodeDataset(X_train, Y_train, index_df=index_train, mode = args.mode)
     X_val, Y_val, index_val  = preprocess('val', use_saved=args.use_saved, window_len = args.window, sample=sample, sample_size=args.val_sample_size)
     #X_val, Y_val = X_val.to(device), Y_val.to(device)
-    val_dataset = EpisodeDataset(X_val, Y_val, index_df=index_val)
+    val_dataset = EpisodeDataset(X_val, Y_val, index_df=index_val, mode = args.mode)
     #criterion = nn.L1Loss()
     criterion = nn.MSELoss()
 
-    if args.mode == "both":
-        model = EpisodeNet()
-    elif args.mode == "physio":
-        model = PhysioNet("physio")
-    else:
-        model = NotesNet("notes")
-
     #model = PhysioNet()
+    model = EpisodeNet()
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr =args.lr)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True)                              
