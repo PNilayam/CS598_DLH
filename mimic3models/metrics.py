@@ -81,16 +81,33 @@ def mean_absolute_percentage_error(y_true, y_pred):
     return np.mean(np.abs((y_true - y_pred) / (y_true + 0.1))) * 100
 
 
-def print_metrics_regression(y_true, predictions, verbose=1, extra=False, custom_bin=0):
+def print_metrics_regression(y_true, predictions, verbose=1, extra=False, 
+                                custom_bin=0, fill_ones=False):
     predictions = np.array(predictions)
     predictions = np.maximum(predictions, 0).flatten()
     y_true = np.array(y_true)
 
     y_true_bins = [get_bin_custom(x, custom_bin=custom_bin) for x in y_true]
     prediction_bins = [get_bin_custom(x, custom_bin=custom_bin) for x in predictions]
+    
+    if fill_ones:
+        if custom_bin == 0:
+            bins = CustomBins.bins
+            nbins = CustomBins.nbins
+        elif custom_bin == 1:
+            bins = CustomBins1.bins
+            nbins = CustomBins1.nbins
+        elif custom_bin == 2:
+            bins = CustomBins2.bins
+            nbins = CustomBins2.nbins
+        y_true_bins += range(nbins)
+        prediction_bins += range(nbins)
+
     cf = metrics.confusion_matrix(y_true_bins, prediction_bins)
     if verbose:
         print("Custom bins confusion matrix:")
+        if bins:
+            print(bins)
         print(cf)
 
     kappa = metrics.cohen_kappa_score(y_true_bins, prediction_bins,
@@ -188,10 +205,16 @@ class CustomBins1:
     nbins = len(bins)
     means = [24, 60, 254.306624, 585.325890]
 
+class CustomBins2:
+    inf = 1e18
+    bins = [(-inf, 0.5), (0.5, 1), (1, 1.5), (1.5, 2), (2, 2.5), (2.5, 3), (3, 7), (7, 14), (14, +inf)]
+    nbins = len(bins)
+    # means = [24, 60, 254.306624, 585.325890]
+
 
 def get_bin_custom(x, nbins=None, one_hot=False, custom_bin=0):
     if custom_bin == 0:
-        nbins=CustomBins.nbins
+        nbins = CustomBins.nbins
         for i in range(nbins):
             a = CustomBins.bins[i][0] * 24.0
             b = CustomBins.bins[i][1] * 24.0
@@ -202,13 +225,24 @@ def get_bin_custom(x, nbins=None, one_hot=False, custom_bin=0):
                     return ret
                 return i
     if custom_bin == 1:
-        nbins=CustomBins.nbins
+        nbins = CustomBins1.nbins
         for i in range(nbins):
             a = CustomBins1.bins[i][0] * 24.0
             b = CustomBins1.bins[i][1] * 24.0
             if a <= x < b:
                 if one_hot:
                     ret = np.zeros((CustomBins1.nbins,))
+                    ret[i] = 1
+                    return ret
+                return i
+    if custom_bin == 2:
+        nbins=CustomBins2.nbins
+        for i in range(nbins):
+            a = CustomBins2.bins[i][0] * 24.0
+            b = CustomBins2.bins[i][1] * 24.0
+            if a <= x < b:
+                if one_hot:
+                    ret = np.zeros((CustomBins2.nbins,))
                     ret[i] = 1
                     return ret
                 return i
