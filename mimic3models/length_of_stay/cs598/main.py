@@ -7,7 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F 
 import pandas as pd
 from preprocess import preprocess
-from model import EpisodeCNN
+from model import PhysioNet
+from model import EpisodeNet
+from model import NotesNet
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 from tqdm import trange
@@ -18,12 +20,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 from math import log
 from datetime import datetime
+from functools import lru_cache
 
 seed = 29
 random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 os.environ["PYTHONHASHSEED"] = str(seed)
+NOTES_PATH = "/mnt/data01/mimic-3/benchmark-notes/"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', type=float, default = 0.001, help= "Learning rate for the model")
@@ -36,10 +40,19 @@ parser.add_argument('--train_sample_size', type=int, help='if data == sample, pr
 parser.add_argument('--val_sample_size', type=int, help='if data == sample, provide training sample size',default=500)
 parser.add_argument('--test_sample_size', type=int, help='if data == sample, provide training sample size',default=5000)
 parser.add_argument('--model_output_dir', type=str, help='Model output dir',default='/mnt/data01/models/cnn/')
+parser.add_argument('--mode', type=str, help='physio / model / both', default='both')
 
 args = parser.parse_args()
 print(args)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+@lru_cache(maxsize = 200)
+def load_notes_embeddings(patient_id, episode, folder = "train"):
+    file = "{}{}/{}/{}_notes_bert_window5-1_tensor.parquet".format(NOTES_PATH,folder,patient_id, episode)
+    df = pq.read_pandas(file).to_pandas()
+    return torch.tensor(np.stack([np.stack(x) for x in df["TEXT_WINDOW_EMBEDDING"].iloc[0]]))
+
 
 def eval_model(model, val_loader):
     model.eval()
@@ -47,8 +60,9 @@ def eval_model(model, val_loader):
     all_y_pred = torch.DoubleTensor()
     for x, y in val_loader:
         x = x.to(device)
+        #print("x_val is {}".format(x.is_cuda))
         y_hat = model(x)
-        all_y_true = torch.cat((all_y_true, y.to('cpu')), dim=0)
+        all_y_true = torch.cat((all_y_true, y), dim=0)
         all_y_pred = torch.cat((all_y_pred,  y_hat.to('cpu')), dim=0)
     mse= mean_squared_error(all_y_true.detach().numpy(), all_y_pred.detach().numpy())
     print(f"mse: {mse:.3f}")
@@ -80,15 +94,24 @@ from torch.utils.data import Dataset
 
 class EpisodeDataset(Dataset):
     
-    def __init__(self, obs, los):
+    def __init__(self, obs, los, index_df, folder="train"):
         self.x = obs
         self.y = los
+        self.index = index_df
+        self.folder = folder
     
     def __len__(self):
         return len(self.y)
     
     def __getitem__(self, index):
-        return (self.x[index], self.y[index])
+        idx = self.index[self.index.idx == index]
+        #print("Index is ", idx)
+        #print("patient_id ", idx.iat[0,1])
+        #print("episode ", idx.iat[0,2])
+        pe_notes = load_notes_embeddings(idx.iat[0,1], idx.iat[0,2], self.folder)
+        #print(pe_notes.shape)
+        notes = pe_notes[idx.iat[0,3]]
+        return (self.x[index], notes, self.y[index])
         
 
 
@@ -99,13 +122,23 @@ if __name__ == "__main__":
     sample = False
     if args.data == 'sample':
         sample = True
-    X_train, Y_train = preprocess('train', use_saved=args.use_saved, window_len=args.window, sample=sample, sample_size=args.train_sample_size)
-    train_dataset = EpisodeDataset(X_train, Y_train)
-    X_val, Y_val = preprocess('val', use_saved=args.use_saved, window_len = args.window, sample=sample, sample_size=args.val_sample_size)
-    val_dataset = EpisodeDataset(X_val, Y_val)
+    X_train, Y_train, index_train = preprocess('train', use_saved=args.use_saved, window_len=args.window, sample=sample, sample_size=args.train_sample_size)
+    #X_train, Y_train = X_train.to(device), Y_train.to(device)
+    train_dataset = EpisodeDataset(X_train, Y_train, index_df=index_train)
+    X_val, Y_val, index_val  = preprocess('val', use_saved=args.use_saved, window_len = args.window, sample=sample, sample_size=args.val_sample_size)
+    #X_val, Y_val = X_val.to(device), Y_val.to(device)
+    val_dataset = EpisodeDataset(X_val, Y_val, index_df=index_val)
     #criterion = nn.L1Loss()
     criterion = nn.MSELoss()
-    model = EpisodeCNN()
+
+    if args.mode == "both":
+        model = EpisodeNet()
+    elif args.mode == "physio":
+        model = PhysioNet("physio")
+    else:
+        model = NotesNet("notes")
+
+    #model = PhysioNet()
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr =args.lr)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,shuffle=True)                              
