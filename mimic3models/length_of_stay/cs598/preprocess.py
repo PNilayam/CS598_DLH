@@ -18,11 +18,13 @@ train_files = train_y_df["stay"].unique().tolist()
 val_y_df = pd.read_csv(DATA_PATH + 'val_listfile.csv') 
 val_files = val_y_df["stay"].unique().tolist()
 test_y_df = pd.read_csv(DATA_PATH + 'test_listfile.csv') 
-test_files = val_y_df["stay"].unique().tolist()
+test_files = test_y_df["stay"].unique().tolist()
 train_y_min , train_y_max = train_y_df.y_true.describe(percentiles = [0.03, 0.97])[["3%","97%"]].to_list()
 val_y_min , val_y_max = val_y_df.y_true.describe(percentiles = [0.03, 0.97])[["3%","97%"]].to_list()
+test_y_min , test_y_max = test_y_df.y_true.describe(percentiles = [0.03, 0.97])[["3%","97%"]].to_list()
 train_y_df = train_y_df [ (train_y_df.y_true > train_y_min) & (train_y_df.y_true < train_y_max)]
 val_y_df = val_y_df [ (val_y_df.y_true > val_y_min) & (val_y_df.y_true < val_y_max)]
+test_y_df = test_y_df [ (test_y_df.y_true > test_y_min) & (test_y_df.y_true < test_y_max)]
 
 with open('config.json') as f:
     config = json.load(f)
@@ -117,7 +119,7 @@ def preprocess(path, use_saved = True, window_len = 5, sample = False, sample_si
         y_df = test_y_df
         preprocess_path = TEST_PATH
         if sample:
-            data_files = np.random.choice(val_files, sample_size, replace=False)
+            data_files = np.random.choice(test_files, sample_size, replace=False)
         else:
             data_files = test_files
         
