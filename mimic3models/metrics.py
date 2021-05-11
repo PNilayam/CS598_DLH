@@ -86,6 +86,7 @@ def print_metrics_regression(y_true, predictions, verbose=1, extra=False,
     predictions = np.array(predictions)
     predictions = np.maximum(predictions, 0).flatten()
     y_true = np.array(y_true)
+    bins=None
 
     y_true_bins = [get_bin_custom(x, custom_bin=custom_bin) for x in y_true]
     prediction_bins = [get_bin_custom(x, custom_bin=custom_bin) for x in predictions]
