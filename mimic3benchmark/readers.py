@@ -6,6 +6,7 @@ import numpy as np
 import random
 import re
 import pandas as pd
+from functools import lru_cache
 
 
 class Reader(object):
@@ -261,6 +262,10 @@ class LengthOfStayReader_Notes(LengthOfStayReader):
 
 
 class LengthOfStayReader_Notes_Embedding(LengthOfStayReader_Notes):
+    @lru_cache(maxsize = 3000)
+    def get_parquet(filename):
+        return pd.read_parquet(filename)
+
     def _read_timeseries(self, ts_filename, time_bound):
         BINSIZE = 5
         ret = []
@@ -277,7 +282,9 @@ class LengthOfStayReader_Notes_Embedding(LengthOfStayReader_Notes):
         columns = ["TEXT_BIN_EMBEDDING"]
         tbin = int(time_bound / BINSIZE)
         try:
-            df = pd.read_parquet(filename)
+            df = get_parquet(filename)
+            print(get_parquet.cache_info())
+            print("here")
             embedding = np.stack([np.stack(x) for x in df["TEXT_BIN_EMBEDDING"].iloc[0]])
             ret = embedding[:tbin+1]
         except BaseException as e:

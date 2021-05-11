@@ -20,11 +20,11 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
 from tqdm import tqdm
 
 # Restrict GPU Memory growoth
-# import tensorflow as tf
-# from tensorflow.python.keras.backend import set_session
-# config = tf.compat.v1.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.3
-# set_session(tf.compat.v1.Session(config=config))
+import tensorflow as tf
+from tensorflow.python.keras.backend import set_session
+config = tf.compat.v1.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.3
+set_session(tf.compat.v1.Session(config=config))
 
 
 parser = argparse.ArgumentParser()
@@ -277,11 +277,11 @@ elif args.mode == 'test':
     else:
         # del train_reader
         # del val_reader
-        test_reader = LengthOfStayReader(dataset_dir=os.path.join(args.data, 'test'),
+        test_reader = LengthOfStayReader_Notes_Embedding(dataset_dir=os.path.join(args.data, 'test'),
                                          listfile=os.path.join(args.data, 'test_listfile.csv'))
         test_data_gen = utils.BatchGen(reader=test_reader,
                                        discretizer=discretizer,
-                                       normalizer=normalizer,
+                                       #normalizer=normalizer,
                                        partition=args.partition,
                                        batch_size=args.batch_size,
                                        steps=args.val_batches,  # put steps = None for a full test
@@ -298,7 +298,7 @@ elif args.mode == 'test':
                             verbose=args.verbose, 
                             steps=args.val_batches,
                             workers=args.workers,
-                            use_multiprocessing=True)
+                            use_multiprocessing=False)
 
         names, ts, y = zip(*test_data_gen.get_truth(len(pred)))
         names = list(names)
